@@ -18,7 +18,6 @@ class AuthRepository {
       scopes: ['email', 'profile'],
       serverClientId:
           '294108253572-oih80rbj00t8rrntjincau7hi6cbji4f.apps.googleusercontent.com',
-      forceCodeForRefreshToken: true,
     );
     return _googleSignIn!;
   }
@@ -27,116 +26,49 @@ class AuthRepository {
 
   Future<ApiResponse<User>> googleLogin() async {
     try {
-      debugPrint('[AUTH] ========== STEP 1: GOOGLE SIGN-IN ==========');
+      debugPrint('[AUTH] ===== GOOGLE SIGN-IN (ID TOKEN FLOW) =====');
 
       final googleUser = await _signIn.signIn();
 
       if (googleUser == null) {
-        debugPrint('[AUTH] User cancelled sign-in');
         return ApiResponse(success: false, message: 'Sign in cancelled');
       }
 
-      debugPrint('[AUTH] Google user obtained');
-      debugPrint('[AUTH] Email: ${googleUser.email}');
-      debugPrint('[AUTH] Display Name: ${googleUser.displayName}');
-
-      debugPrint('[AUTH] ========== STEP 2: GET AUTHENTICATION ==========');
-
       final googleAuth = await googleUser.authentication;
-
-      debugPrint('[AUTH] Has accessToken: ${googleAuth.accessToken != null}');
-      debugPrint('[AUTH] Has idToken: ${googleAuth.idToken != null}');
-      debugPrint(
-        '[AUTH] Has serverAuthCode: ${googleUser.serverAuthCode != null}',
-      );
-
-      final code = googleUser.serverAuthCode;
       final idToken = googleAuth.idToken;
 
-      if (code == null && idToken == null) {
-        debugPrint('[AUTH] No authentication credentials available');
+      if (idToken == null) {
+        debugPrint('[AUTH] idToken is null');
         return ApiResponse(
           success: false,
-          message: 'Failed to get authentication credentials from Google',
+          message: 'Failed to get Google ID token',
         );
       }
 
-      if (code == null) {
-        debugPrint('[AUTH] serverAuthCode is null, using idToken fallback');
-        if (idToken == null) {
-          debugPrint('[AUTH] Both code and idToken are null');
-          return ApiResponse(
-            success: false,
-            message: 'Failed to get authorization code',
-          );
-        }
-        return await _loginWithIdToken(idToken);
-      }
-
-      if (code.isEmpty) {
-        debugPrint('[AUTH] Authorization code is empty');
-        return ApiResponse(
-          success: false,
-          message: 'Invalid authorization code',
-        );
-      }
-
-      debugPrint('[AUTH] Authorization code obtained');
-      debugPrint('[AUTH] Code length: ${code.length}');
-      debugPrint(
-        '[AUTH] Code preview: ${code.substring(0, code.length > 20 ? 20 : code.length)}...',
-      );
-
-      debugPrint('[AUTH] ========== STEP 3: SEND TO BACKEND ==========');
-
-      final response = await _apiService.dio.post(
-        AppConstants.authGoogle,
-        data: {'code': code, 'redirect_uri': 'postmessage'},
-        options: Options(extra: {'withCredentials': true}),
-      );
-
-      debugPrint('[AUTH] Status: ${response.statusCode}');
-
-      return _handleStatusCodeAndResponse(response);
-    } on DioException catch (e) {
-      debugPrint('[AUTH] ========== DIO EXCEPTION ==========');
-      debugPrint('[AUTH] Type: ${e.type}');
-      debugPrint('[AUTH] Status: ${e.response?.statusCode}');
-      debugPrint('[AUTH] Message: ${e.message}');
-      debugPrint('[AUTH] Response: ${e.response?.data}');
-      debugPrint('[AUTH] =====================================');
-
-      return _handleDioException(e);
+      debugPrint('[AUTH] idToken obtained');
+      return await _loginWithIdToken(idToken);
     } catch (e, stackTrace) {
-      debugPrint('[AUTH] ========== UNEXPECTED ERROR ==========');
-      debugPrint('[AUTH] Error: $e');
-      debugPrint('[AUTH] Stack: $stackTrace');
-      debugPrint('[AUTH] ========================================');
+      debugPrint('[AUTH] Google login failed: $e');
+      debugPrint('$stackTrace');
       return ApiResponse(success: false, message: 'Google sign-in failed');
     }
   }
 
   Future<ApiResponse<User>> _loginWithIdToken(String idToken) async {
     try {
-      debugPrint('[AUTH] ========== IDTOKEN FALLBACK ==========');
-      debugPrint('[AUTH] Using idToken for authentication');
-
       final response = await _apiService.dio.post(
         AppConstants.authGoogle,
-        data: {
-          'idToken': idToken,
-          'redirect_uri': 'postmessage', // Add this
-        },
+        data: {'idToken': idToken},
         options: Options(extra: {'withCredentials': true}),
       );
 
-      debugPrint('[AUTH] idToken response status: ${response.statusCode}');
+      debugPrint('[AUTH] Backend response: ${response.statusCode}');
       return _handleStatusCodeAndResponse(response);
     } on DioException catch (e) {
-      debugPrint('[AUTH] idToken DioException: ${e.response?.statusCode}');
+      debugPrint('[AUTH] Backend error: ${e.response?.statusCode}');
       return _handleDioException(e);
     } catch (e) {
-      debugPrint('[AUTH] idToken failed: $e');
+      debugPrint('[AUTH] _loginWithIdToken failed: $e');
       return ApiResponse(
         success: false,
         message: 'Failed to authenticate with Google',
@@ -422,6 +354,23 @@ class AuthRepository {
       return ApiResponse(
         success: false,
         message: data['message'] ?? 'Authentication failed',
+      );
+    }
+
+    // Extract and save tokens if present in response
+    final accessToken =
+        data['accessToken'] ?? data['access_token'] ?? data['token'];
+    final refreshToken = data['refreshToken'] ?? data['refresh_token'];
+
+    if (accessToken != null) {
+      debugPrint('[AUTH] Access token found in response, saving...');
+      _storageService.saveTokens(
+        accessToken: accessToken.toString(),
+        refreshToken: refreshToken?.toString() ?? '',
+      );
+    } else {
+      debugPrint(
+        '[AUTH] No access token in response body (using cookies only)',
       );
     }
 

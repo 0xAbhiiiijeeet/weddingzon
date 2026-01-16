@@ -53,7 +53,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 24, letterSpacing: 8),
                   decoration: const InputDecoration(
-                    hintText: '000000',
+                    hintText: '------',
                     border: OutlineInputBorder(),
                   ),
                 ),

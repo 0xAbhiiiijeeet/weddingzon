@@ -195,4 +195,41 @@ class UserRepository {
       );
     }
   }
+
+  /// Get user profile by username
+  /// GET /users/:username
+  Future<ApiResponse<Map<String, dynamic>>> getUserByUsername(
+    String username,
+  ) async {
+    try {
+      debugPrint('[USER_REPO] ========== GET USER BY USERNAME ==========');
+      debugPrint('[USER_REPO] Username: $username');
+
+      final response = await _apiService.dio.get(
+        '${AppConstants.usersProfile}/$username',
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      debugPrint('[USER_REPO] Status: ${response.statusCode}');
+
+      if (response.statusCode == 200 && response.data != null) {
+        debugPrint('[USER_REPO] User profile data received');
+        return ApiResponse(
+          success: true,
+          data: response.data as Map<String, dynamic>,
+        );
+      }
+
+      return ApiResponse(
+        success: false,
+        message: response.statusMessage ?? 'Failed to get user profile',
+      );
+    } on DioException catch (e) {
+      debugPrint('[USER_REPO] Error: ${e.message}');
+      return ApiResponse(
+        success: false,
+        message: e.response?.data['message'] ?? e.message ?? 'Network error',
+      );
+    }
+  }
 }

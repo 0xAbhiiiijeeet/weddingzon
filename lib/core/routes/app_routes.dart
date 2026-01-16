@@ -16,6 +16,8 @@ import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/photo_manager_screen.dart';
 import '../../features/feed/screens/user_profile_screen.dart';
 import '../../features/feed/models/feed_user.dart';
+import '../../features/chat/screens/conversations_screen.dart';
+import '../../features/chat/screens/chat_screen.dart';
 
 class AppRoutes {
   static const String landing = '/';
@@ -33,6 +35,8 @@ class AppRoutes {
   static const String editProfile = '/profile/edit';
   static const String photoManager = '/profile/photos';
   static const String userProfile = '/profile/user';
+  static const String conversations = '/chat/conversations';
+  static const String chat = '/chat';
 
   static Map<String, WidgetBuilder> get routes => {
     landing: (_) => const LandingScreen(),
@@ -57,16 +61,33 @@ class AppRoutes {
     photoManager: (_) => const PhotoManagerScreen(),
     userProfile: (context) {
       final args = ModalRoute.of(context)?.settings.arguments;
-      // Handle both FeedUser and Map<String, dynamic>
-      if (args is FeedUser) {
-        return UserProfileScreen(user: args);
+      // Handle username string (preferred), FeedUser, or Map
+      if (args is String) {
+        return UserProfileScreen(username: args);
+      } else if (args is FeedUser) {
+        return UserProfileScreen(username: args.username);
       } else if (args is Map<String, dynamic>) {
-        // Convert map to FeedUser
-        final feedUser = FeedUser.fromJson(args);
-        return UserProfileScreen(user: feedUser);
+        final username = args['username'] as String?;
+        if (username != null) {
+          return UserProfileScreen(username: username);
+        }
       }
-      // Fallback - shouldn't happen
-      throw ArgumentError('Invalid argument type for userProfile route');
+      throw ArgumentError('Username required for userProfile route');
+    },
+    conversations: (_) => const ConversationsScreen(),
+    chat: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        return ChatScreen(
+          userId: args['userId'] as String,
+          username: args['username'] as String,
+          firstName: args['firstName'] as String?,
+          lastName: args['lastName'] as String?,
+          profilePhoto: args['profilePhoto'] as String?,
+        );
+      }
+      throw ArgumentError('Chat arguments required');
     },
   };
 }

@@ -1,34 +1,9 @@
 {
-    "project_info": {
+    "installed": {
+        "client_id": "294108253572-90qnhimcjf8nugpdfqn3m0f1m9ni8q2p.apps.googleusercontent.com",
         "project_id": "hoocup",
-        "project_number": "294108253572",
-        "storage_bucket": "hoocup.appspot.com"
-    },
-    "client": [
-        {
-            "client_info": {
-                "mobilesdk_app_id": "1:294108253572:android:weddingzon",
-                "android_client_info": {
-                    "package_name": "com.example.weddingzon"
-                }
-            },
-            "oauth_client": [
-                {
-                    "client_id": "294108253572-90qnhimcjf8nugpdfqn3m0f1m9ni8q2p.apps.googleusercontent.com",
-                    "client_type": 3
-                }
-            ],
-            "api_key": [
-                {
-                    "current_key": ""
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": []
-                }
-            }
-        }
-    ],
-    "configuration_version": "1"
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+    }
 }

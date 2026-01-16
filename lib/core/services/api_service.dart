@@ -7,9 +7,10 @@ import '../constants/app_constants.dart';
 
 class ApiService {
   late final Dio _dio;
-  late final PersistCookieJar _cookieJar;
+  PersistCookieJar? _cookieJar;
   String? _csrfToken;
   bool _initialized = false;
+  bool _isRefreshing = false;
 
   ApiService() {
     _dio = Dio(
@@ -28,7 +29,39 @@ class ApiService {
     );
   }
 
-  Dio get dio => _dio;
+  Dio get dio {
+    assert(
+      _initialized,
+      'ApiService must be initialized before use. Call init() first.',
+    );
+    return _dio;
+  }
+
+  /// Get cookies as a string for socket authentication
+  Future<String> getCookieString() async {
+    if (_cookieJar == null) return '';
+
+    try {
+      final uri = Uri.parse(AppConstants.baseUrl);
+      final cookies = await _cookieJar!.loadForRequest(uri);
+
+      if (cookies.isEmpty) {
+        debugPrint('[API] No cookies found for socket auth');
+        return '';
+      }
+
+      final cookieString = cookies
+          .map((c) => '${c.name}=${c.value}')
+          .join('; ');
+      debugPrint(
+        '[API] Socket cookie string generated (${cookies.length} cookies)',
+      );
+      return cookieString;
+    } catch (e) {
+      debugPrint('[API] Error getting cookies: $e');
+      return '';
+    }
+  }
 
   /// Initialize the API service - MUST be called before using
   Future<void> init() async {
@@ -48,14 +81,14 @@ class ApiService {
   }
 
   void _setupInterceptors() {
-    _dio.interceptors.add(CookieManager(_cookieJar));
+    _dio.interceptors.add(CookieManager(_cookieJar!));
 
     _dio.interceptors.add(
       LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: true,
-        responseHeader: true,
+        requestBody: false,
+        responseBody: false,
+        requestHeader: false,
+        responseHeader: false,
         logPrint: (obj) => debugPrint('[API] $obj'),
       ),
     );
@@ -76,7 +109,7 @@ class ApiService {
 
           return handler.next(options);
         },
-        onResponse: (response, handler) {
+        onResponse: (response, handler) async {
           debugPrint('[API] ========== RESPONSE ==========');
           debugPrint('[API] Status: ${response.statusCode}');
 
@@ -101,6 +134,36 @@ class ApiService {
           }
 
           debugPrint('[API] ==================================');
+
+          // Handle 401 Unauthorized - try to refresh token
+          if (response.statusCode == 401 && !_isRefreshing) {
+            debugPrint('[API] 401 detected, attempting token refresh...');
+            _isRefreshing = true;
+
+            try {
+              // Call refresh endpoint with refresh_token cookie
+              final refreshResponse = await _dio.post(
+                AppConstants.refreshToken,
+                options: Options(extra: {'withCredentials': true}),
+              );
+
+              if (refreshResponse.statusCode == 200) {
+                debugPrint('[API] Token refreshed successfully');
+                _isRefreshing = false;
+
+                // Retry the original request
+                final retryResponse = await _retry(response.requestOptions);
+                return handler.resolve(retryResponse);
+              }
+            } catch (refreshError) {
+              debugPrint('[API] Token refresh failed: $refreshError');
+              _isRefreshing = false;
+              // Let the 401 propagate - user needs to re-login
+            }
+
+            _isRefreshing = false;
+          }
+
           return handler.next(response);
         },
         onError: (DioException e, handler) async {
@@ -122,8 +185,28 @@ class ApiService {
     );
   }
 
+  /// Retry a failed request with fresh credentials
+  Future<Response> _retry(RequestOptions requestOptions) async {
+    final options = Options(
+      method: requestOptions.method,
+      headers: requestOptions.headers,
+      extra: requestOptions.extra,
+    );
+
+    return _dio.request(
+      requestOptions.path,
+      data: requestOptions.data,
+      queryParameters: requestOptions.queryParameters,
+      options: options,
+    );
+  }
+
   Future<void> clearCookies() async {
-    await _cookieJar.deleteAll();
-    debugPrint('[API] Cookies cleared');
+    if (_cookieJar != null) {
+      await _cookieJar!.deleteAll();
+      debugPrint('[API] Cookies cleared');
+    } else {
+      debugPrint('[API] Cookie jar not initialized, nothing to clear');
+    }
   }
 }

@@ -216,20 +216,13 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
             ),
             padding: const EdgeInsets.all(8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (!isProfile && !photo.isProfile && photo.publicId != null)
                   _buildActionButton(
                     icon: Icons.star_border,
-                    label: 'Set Profile',
+                    label: 'Set as Profile',
                     onTap: () => _setAsProfilePhoto(photo.publicId!),
-                  ),
-                if (photo.publicId != null)
-                  _buildActionButton(
-                    icon: Icons.delete_outline,
-                    label: 'Delete',
-                    onTap: () => _confirmDelete(photo.publicId!),
-                    color: Colors.red,
                   ),
               ],
             ),
@@ -278,6 +271,19 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
   Future<void> _pickAndUploadPhotos() async {
     try {
+      // Get current photo count
+      final authProvider = context.read<AuthProvider>();
+      final currentPhotoCount = authProvider.currentUser?.photos.length ?? 0;
+      final remainingSlots = 10 - currentPhotoCount;
+
+      if (remainingSlots <= 0) {
+        Fluttertoast.showToast(
+          msg: 'Maximum 10 photos allowed',
+          backgroundColor: Colors.orange,
+        );
+        return;
+      }
+
       final pickedFiles = await _picker.pickMultiImage(
         maxWidth: 1920,
         maxHeight: 1920,
@@ -286,9 +292,19 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
       if (pickedFiles.isEmpty) return;
 
+      // Limit to remaining slots
+      final filesToUpload = pickedFiles.take(remainingSlots).toList();
+      if (filesToUpload.length < pickedFiles.length) {
+        Fluttertoast.showToast(
+          msg:
+              'Only ${filesToUpload.length} photos will be uploaded (max 10 total)',
+          backgroundColor: Colors.orange,
+        );
+      }
+
       setState(() => _isUploading = true);
 
-      final files = pickedFiles.map((xFile) => File(xFile.path)).toList();
+      final files = filesToUpload.map((xFile) => File(xFile.path)).toList();
       final provider = context.read<ProfileProvider>();
       final success = await provider.uploadPhotos(files);
 
@@ -336,46 +352,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     } else {
       Fluttertoast.showToast(
         msg: 'Failed to update profile photo',
-        backgroundColor: Colors.red,
-      );
-    }
-  }
-
-  Future<void> _confirmDelete(String photoId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Photo'),
-        content: const Text('Are you sure you want to delete this photo?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final provider = context.read<ProfileProvider>();
-    final success = await provider.deletePhoto(photoId);
-
-    if (!mounted) return;
-
-    if (success) {
-      await context.read<AuthProvider>().checkAuthStatus();
-      Fluttertoast.showToast(
-        msg: 'Photo deleted',
-        backgroundColor: Colors.green,
-      );
-    } else {
-      Fluttertoast.showToast(
-        msg: 'Failed to delete photo',
         backgroundColor: Colors.red,
       );
     }

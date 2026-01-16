@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/services/api_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/navigation_service.dart';
+import 'core/services/socket_service.dart';
 import 'core/routes/app_routes.dart';
 import 'features/auth/repositories/auth_repository.dart';
 import 'features/auth/providers/auth_provider.dart';
@@ -17,6 +18,8 @@ import 'features/profile/repositories/user_repository.dart';
 import 'features/profile/providers/profile_provider.dart';
 import 'features/explore/repositories/explore_repository.dart';
 import 'features/explore/providers/explore_provider.dart';
+import 'features/chat/repository/chat_repository.dart';
+import 'features/chat/provider/chat_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,8 @@ void main() async {
   final connectionsRepository = ConnectionsRepository(apiService);
   final userRepository = UserRepository(apiService);
   final exploreRepository = ExploreRepository(apiService);
+  final chatRepository = ChatRepository(apiService);
+  final socketService = SocketService();
 
   runApp(
     MultiProvider(
@@ -58,6 +63,10 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => ExploreProvider(exploreRepository),
         ),
+        ChangeNotifierProvider(
+          create: (_) => ChatProvider(chatRepository, socketService),
+        ),
+        Provider<SocketService>.value(value: socketService),
       ],
       child: const WeddingZonApp(),
     ),

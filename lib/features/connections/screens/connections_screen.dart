@@ -70,6 +70,58 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     );
   }
 
+  Widget _getRequestTypeChip(String type) {
+    Color chipColor;
+    String chipLabel;
+    IconData chipIcon;
+
+    switch (type.toLowerCase()) {
+      case 'connection':
+        chipColor = Colors.deepPurple;
+        chipLabel = 'Connection Request';
+        chipIcon = Icons.person_add;
+        break;
+      case 'photo':
+        chipColor = Colors.blue;
+        chipLabel = 'Photo Access';
+        chipIcon = Icons.image;
+        break;
+      case 'details':
+        chipColor = Colors.green;
+        chipLabel = 'Details Access';
+        chipIcon = Icons.contact_page;
+        break;
+      default:
+        chipColor = Colors.grey;
+        chipLabel = 'Request';
+        chipIcon = Icons.help_outline;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: chipColor, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(chipIcon, size: 16, color: chipColor),
+          const SizedBox(width: 6),
+          Text(
+            chipLabel,
+            style: TextStyle(
+              color: chipColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRequestCard(
     Map<String, dynamic> request,
     ConnectionsProvider provider,
@@ -78,6 +130,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     final requester = request['requester'] as Map<String, dynamic>?;
     final status = request['status'] as String? ?? 'pending';
     final createdAt = request['createdAt'] as String? ?? '';
+    final requestType = request['type'] as String? ?? 'connection';
 
     if (requester == null) return const SizedBox.shrink();
 
@@ -115,6 +168,10 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Request Type Chip
+            _getRequestTypeChip(requestType),
+            const SizedBox(height: 12),
+
             Row(
               children: [
                 // Profile photo
@@ -171,40 +228,10 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
               ],
             ),
 
-            // Action buttons
-            if (status == 'pending') ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: provider.isLoading
-                          ? null
-                          : () => provider.reject(requestId),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                      ),
-                      child: const Text('Decline'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: provider.isLoading
-                          ? null
-                          : () => provider.accept(requestId),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Accept'),
-                    ),
-                  ),
-                ],
-              ),
-            ] else if (status == 'accepted') ...[
+            // Action buttons based on request type
+            if (status == 'pending')
+              ..._buildActionButtons(requestId, requestType, provider)
+            else if (status == 'accepted' || status == 'granted') ...[
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -226,7 +253,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Accepted',
+                      requestType == 'connection' ? 'Accepted' : 'Granted',
                       style: TextStyle(
                         color: Colors.green.shade700,
                         fontWeight: FontWeight.w600,
@@ -267,5 +294,117 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildActionButtons(
+    String requestId,
+    String requestType,
+    ConnectionsProvider provider,
+  ) {
+    if (requestType == 'connection') {
+      return [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.reject(requestId),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                ),
+                child: const Text('Decline'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.accept(requestId),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Accept'),
+              ),
+            ),
+          ],
+        ),
+      ];
+    } else if (requestType == 'photo') {
+      return [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.respondPhotoRequest(requestId, 'reject'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                ),
+                child: const Text('Deny'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.respondPhotoRequest(requestId, 'grant'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Grant Access'),
+              ),
+            ),
+          ],
+        ),
+      ];
+    } else if (requestType == 'details') {
+      return [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.respondDetailsRequest(requestId, 'reject'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                ),
+                child: const Text('Deny'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.respondDetailsRequest(requestId, 'grant'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Grant Access'),
+              ),
+            ),
+          ],
+        ),
+      ];
+    }
+
+    return [];
   }
 }

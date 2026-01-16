@@ -241,13 +241,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       return UserCardWidget(
                         user: provider.users[index],
                         onTap: () {
-                          // Navigate to user profile
                           final userMap = provider.users[index];
-                          // Convert map to FeedUser for navigation
                           Navigator.pushNamed(
                             context,
                             '/profile/user',
-                            arguments: userMap,
+                            arguments: userMap['username'],
                           );
                         },
                       );

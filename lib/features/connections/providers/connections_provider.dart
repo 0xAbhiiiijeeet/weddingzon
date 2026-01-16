@@ -65,4 +65,50 @@ class ConnectionsProvider with ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  Future<void> respondPhotoRequest(String requestId, String action) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final response = await _repository.respondPhotoRequest(
+      requestId: requestId,
+      action: action,
+    );
+
+    if (response.success) {
+      final actionText = action == 'grant' ? 'granted' : 'denied';
+      Fluttertoast.showToast(msg: 'Photo access $actionText');
+      _incomingRequests.removeWhere((r) => r['_id'] == requestId);
+    } else {
+      Fluttertoast.showToast(
+        msg: response.message ?? 'Failed to respond to photo request',
+      );
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> respondDetailsRequest(String requestId, String action) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final response = await _repository.respondDetailsRequest(
+      requestId: requestId,
+      action: action,
+    );
+
+    if (response.success) {
+      final actionText = action == 'grant' ? 'granted' : 'denied';
+      Fluttertoast.showToast(msg: 'Details access $actionText');
+      _incomingRequests.removeWhere((r) => r['_id'] == requestId);
+    } else {
+      Fluttertoast.showToast(
+        msg: response.message ?? 'Failed to respond to details request',
+      );
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
 }

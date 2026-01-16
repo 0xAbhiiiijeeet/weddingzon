@@ -5,11 +5,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../models/feed_user.dart';
 import '../providers/connection_provider.dart';
+import '../../profile/repositories/user_repository.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/routes/app_routes.dart';
 
 class UserProfileScreen extends StatefulWidget {
-  final FeedUser user;
+  final String username;
 
-  const UserProfileScreen({super.key, required this.user});
+  const UserProfileScreen({super.key, required this.username});
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -17,14 +20,14 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   final PageController _photoController = PageController();
+  FeedUser? _user;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    // Fetch connection status when profile loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ConnectionProvider>().fetchStatus(widget.user.username);
-    });
+    _loadUserProfile();
   }
 
   @override
@@ -33,53 +36,141 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _loadUserProfile() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final apiService = context.read<ApiService>();
+      final userRepository = UserRepository(apiService);
+      final response = await userRepository.getUserByUsername(widget.username);
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _user = FeedUser.fromJson(response.data!);
+          _isLoading = false;
+        });
+
+        // Fetch connection status
+        if (mounted) {
+          context.read<ConnectionProvider>().fetchStatus(widget.username);
+        }
+      } else {
+        setState(() {
+          _error = response.message ?? 'Failed to load profile';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'An error occurred: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null || _user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error ?? 'User not found', textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadUserProfile,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.user.fullName), centerTitle: true),
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: Text(_user!.fullName),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo Carousel
-            _buildPhotoCarousel(),
+            // Header Section with Profile Photo and Basic Info
+            _buildHeaderSection(),
 
+            const SizedBox(height: 16),
+
+            // Main Content
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name and Age
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.user.fullName,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  // About Me Section
+                  if (_user!.aboutMe != null && _user!.aboutMe!.isNotEmpty)
+                    _buildSectionCard(
+                      icon: Icons.person_outline,
+                      title: 'About Me',
+                      child: Text(
+                        _user!.aboutMe!,
+                        style: const TextStyle(fontSize: 15, height: 1.5),
                       ),
-                      if (widget.user.age != null)
-                        Text(
-                          '${widget.user.age}',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                    ),
 
-                  // Basic Info
-                  _buildInfoSection(),
+                  // Photos Section
+                  _buildPhotosSection(),
+
+                  // Details Sections (Career, Family, Lifestyle, Attributes)
+                  // Show locked state if details access not granted
+                  Consumer<ConnectionProvider>(
+                    builder: (context, connectionProvider, _) {
+                      final detailsStatus = connectionProvider.getDetailsStatus(
+                        widget.username,
+                      );
+                      final hasDetailsAccess =
+                          detailsStatus == 'granted' ||
+                          detailsStatus == 'accepted';
+
+                      if (!hasDetailsAccess) {
+                        return _buildDetailsLockedSection(connectionProvider);
+                      }
+
+                      // Show all details sections if access granted
+                      return Column(
+                        children: [
+                          _buildCareerSection(),
+                          _buildFamilySection(),
+                          _buildLifestyleSection(),
+                          _buildAttributesSection(),
+                        ],
+                      );
+                    },
+                  ),
 
                   const SizedBox(height: 24),
 
                   // Action Buttons
                   _buildActionButtons(),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -89,42 +180,476 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildPhotoCarousel() {
-    final photos = widget.user.photos.isNotEmpty ? widget.user.photos : [];
+  Widget _buildHeaderSection() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Profile Photo
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: _user!.profilePhoto != null
+                    ? CachedNetworkImageProvider(_user!.profilePhoto!)
+                    : null,
+                child: _user!.profilePhoto == null
+                    ? Text(
+                        _user!.fullName.isNotEmpty
+                            ? _user!.fullName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(width: 20),
 
-    if (photos.isEmpty) {
-      return _buildPlaceholderPhoto();
+          // Name and Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _user!.fullName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (_user!.location != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _user!.location!,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 12),
+
+                // Chips
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (_user!.occupation != null)
+                      _buildChip(_user!.occupation!, Colors.blue),
+                    if (_user!.religion != null)
+                      _buildChip(_user!.religion!, Colors.orange),
+                    if (_user!.maritalStatus != null)
+                      _buildChip(_user!.maritalStatus!, Colors.purple),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.deepPurple),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotosSection() {
+    final photos = _user!.photos;
+
+    return Consumer<ConnectionProvider>(
+      builder: (context, connectionProvider, _) {
+        final photoStatus = connectionProvider.getStatus(widget.username);
+        final hasPhotoAccess =
+            photoStatus == 'granted' || photoStatus == 'accepted';
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.photo_library,
+                        size: 20,
+                        color: Colors.deepPurple,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Photos',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepPurple,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!hasPhotoAccess && photos.isNotEmpty)
+                    _buildRequestAccessButton(connectionProvider),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (photos.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text(
+                      'No photos available',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 200,
+                  child: Stack(
+                    children: [
+                      PageView.builder(
+                        controller: _photoController,
+                        itemCount: photos.length,
+                        itemBuilder: (context, index) {
+                          final photo = photos[index];
+                          final isRestricted =
+                              photo.restricted && !hasPhotoAccess;
+
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: photo.url,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          color: Colors.grey[200],
+                                          child: const Icon(
+                                            Icons.error,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                  ),
+                                  if (isRestricted)
+                                    BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                        sigmaX: 15,
+                                        sigmaY: 15,
+                                      ),
+                                      child: Container(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.lock,
+                                            size: 40,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      if (photos.length > 1)
+                        Positioned(
+                          bottom: 8,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: SmoothPageIndicator(
+                              controller: _photoController,
+                              count: photos.length,
+                              effect: const WormEffect(
+                                dotHeight: 8,
+                                dotWidth: 8,
+                                activeDotColor: Colors.deepPurple,
+                                dotColor: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRequestAccessButton(ConnectionProvider connectionProvider) {
+    final status = connectionProvider.getStatus(widget.username);
+    final isRequesting = connectionProvider.isRequesting(widget.username);
+    final isCancelling = connectionProvider.isCancellingRequest(
+      widget.username,
+    );
+
+    if (status == 'pending') {
+      return OutlinedButton.icon(
+        onPressed: isCancelling
+            ? null
+            : () =>
+                  connectionProvider.cancelPhotoAccessRequest(widget.username),
+        icon: isCancelling
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.close, size: 16),
+        label: Text(isCancelling ? 'Cancelling...' : 'Cancel Request'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+      );
     }
 
-    return SizedBox(
-      height: 400,
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _photoController,
-            itemCount: photos.length,
-            itemBuilder: (context, index) {
-              final photo = photos[index];
-              return _buildPhotoItem(photo);
-            },
-          ),
+    return TextButton.icon(
+      onPressed: isRequesting
+          ? null
+          : () => connectionProvider.requestAccess(widget.username),
+      icon: isRequesting
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.lock_open, size: 16),
+      label: Text(isRequesting ? 'Requesting...' : 'Request Access'),
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.deepPurple,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+    );
+  }
 
-          // Dots Indicator
-          if (photos.length > 1)
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: SmoothPageIndicator(
-                  controller: _photoController,
-                  count: photos.length,
-                  effect: const WormEffect(
-                    dotHeight: 8,
-                    dotWidth: 8,
-                    activeDotColor: Colors.white,
-                    dotColor: Colors.white54,
-                  ),
+  Widget _buildDetailsLockedSection(ConnectionProvider connectionProvider) {
+    final detailsStatus = connectionProvider.getDetailsStatus(widget.username);
+    final isRequestingDetails = connectionProvider.isRequestingDetails(
+      widget.username,
+    );
+    final isCancelling = connectionProvider.isCancellingRequest(
+      widget.username,
+    );
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.lock_outline,
+              size: 40,
+              color: Colors.blue.shade300,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Details Locked',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Request access to view this user\'s full\npersonal, family, and lifestyle details.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (detailsStatus == 'pending')
+            OutlinedButton.icon(
+              onPressed: isCancelling
+                  ? null
+                  : () => connectionProvider.cancelDetailsAccessRequest(
+                      widget.username,
+                    ),
+              icon: isCancelling
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.red,
+                      ),
+                    )
+                  : const Icon(Icons.close),
+              label: Text(isCancelling ? 'Cancelling...' : 'Cancel Request'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            )
+          else
+            ElevatedButton.icon(
+              onPressed: isRequestingDetails
+                  ? null
+                  : () => connectionProvider.requestDetailsAccess(
+                      widget.username,
+                    ),
+              icon: isRequestingDetails
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.lock_open),
+              label: Text(
+                isRequestingDetails
+                    ? 'Requesting...'
+                    : 'Request Details Access',
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
@@ -133,137 +658,111 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildPhotoItem(photo) {
-    final isRestricted = photo.restricted;
+  Widget _buildCareerSection() {
+    final hasCareerInfo =
+        _user!.highestEducation != null ||
+        _user!.employedIn != null ||
+        _user!.personalIncome != null;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CachedNetworkImage(
-          imageUrl: photo.url,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: Colors.grey[300],
-            child: const Center(child: CircularProgressIndicator()),
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: Colors.grey[300],
-            child: const Icon(Icons.person, size: 64, color: Colors.grey),
-          ),
-        ),
+    if (!hasCareerInfo) return const SizedBox.shrink();
 
-        // Blur effect for restricted photos
-        if (isRestricted)
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.black.withValues(alpha: 0.3)),
-          ),
-
-        // Request Access Button
-        if (isRestricted)
-          Center(
-            child: Consumer<ConnectionProvider>(
-              builder: (context, connectionProvider, _) {
-                final status = connectionProvider.getStatus(
-                  widget.user.username,
-                );
-                final isRequesting = connectionProvider.isRequesting(
-                  widget.user.username,
-                );
-
-                if (status == 'pending') {
-                  return const Chip(
-                    label: Text('Request Pending'),
-                    backgroundColor: Colors.orange,
-                  );
-                }
-
-                if (status == 'accepted' || status == 'granted') {
-                  return const Chip(
-                    label: Text('Access Granted'),
-                    backgroundColor: Colors.green,
-                  );
-                }
-
-                return ElevatedButton.icon(
-                  onPressed: isRequesting
-                      ? null
-                      : () => connectionProvider.requestAccess(
-                          widget.user.username,
-                        ),
-                  icon: isRequesting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.lock_open),
-                  label: Text(
-                    isRequesting ? 'Requesting...' : 'Request Photo Access',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPlaceholderPhoto() {
-    return Container(
-      height: 400,
-      color: Colors.grey[300],
-      child: const Center(
-        child: Icon(Icons.person, size: 100, color: Colors.grey),
+    return _buildSectionCard(
+      icon: Icons.work_outline,
+      title: 'CAREER',
+      child: Column(
+        children: [
+          if (_user!.highestEducation != null)
+            _buildInfoRow('Education', _user!.highestEducation!),
+          if (_user!.employedIn != null)
+            _buildInfoRow('Employed In', _user!.employedIn!),
+          if (_user!.personalIncome != null)
+            _buildInfoRow('Income', _user!.personalIncome!),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (widget.user.location != null)
-          _buildInfoRow(Icons.location_on, widget.user.location!),
-        if (widget.user.occupation != null)
-          _buildInfoRow(Icons.work, widget.user.occupation!),
-        if (widget.user.religion != null)
-          _buildInfoRow(Icons.church, widget.user.religion!),
-        if (widget.user.gender != null)
-          _buildInfoRow(Icons.person, widget.user.gender!),
-        if (widget.user.height != null)
-          _buildInfoRow(Icons.height, widget.user.height!),
-        if (widget.user.maritalStatus != null)
-          _buildInfoRow(Icons.favorite, widget.user.maritalStatus!),
-        const SizedBox(height: 16),
-        if (widget.user.aboutMe != null) ...[
-          const Text(
-            'About',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(widget.user.aboutMe!, style: const TextStyle(fontSize: 15)),
+  Widget _buildFamilySection() {
+    final hasFamilyInfo =
+        _user!.familyType != null ||
+        _user!.familyStatus != null ||
+        _user!.fatherStatus != null ||
+        _user!.motherStatus != null;
+
+    if (!hasFamilyInfo) return const SizedBox.shrink();
+
+    return _buildSectionCard(
+      icon: Icons.family_restroom,
+      title: 'FAMILY',
+      child: Column(
+        children: [
+          if (_user!.familyType != null)
+            _buildInfoRow('Type', _user!.familyType!),
+          if (_user!.familyStatus != null)
+            _buildInfoRow('Status', _user!.familyStatus!),
+          if (_user!.fatherStatus != null)
+            _buildInfoRow('Father', _user!.fatherStatus!),
+          if (_user!.motherStatus != null)
+            _buildInfoRow('Mother', _user!.motherStatus!),
         ],
-      ],
+      ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildLifestyleSection() {
+    final hasLifestyleInfo =
+        _user!.eatingHabits != null ||
+        _user!.drinkingHabits != null ||
+        _user!.smokingHabits != null;
+
+    if (!hasLifestyleInfo) return const SizedBox.shrink();
+
+    return _buildSectionCard(
+      icon: Icons.favorite_outline,
+      title: 'LIFESTYLE',
+      child: Column(
+        children: [
+          if (_user!.eatingHabits != null)
+            _buildInfoRow('Diet', _user!.eatingHabits!),
+          if (_user!.drinkingHabits != null)
+            _buildInfoRow('Drink', _user!.drinkingHabits!),
+          if (_user!.smokingHabits != null)
+            _buildInfoRow('Smoke', _user!.smokingHabits!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttributesSection() {
+    final hasAttributesInfo =
+        _user!.height != null || _user!.motherTongue != null;
+
+    if (!hasAttributesInfo) return const SizedBox.shrink();
+
+    return _buildSectionCard(
+      icon: Icons.accessibility_new,
+      title: 'ATTRIBUTES',
+      child: Column(
+        children: [
+          if (_user!.height != null) _buildInfoRow('Height', _user!.height!),
+          if (_user!.motherTongue != null)
+            _buildInfoRow('Mother Tongue', _user!.motherTongue!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, size: 20, color: Colors.grey[700]),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 15))),
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -272,81 +771,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget _buildActionButtons() {
     return Consumer<ConnectionProvider>(
       builder: (context, connectionProvider, _) {
-        final detailsStatus = connectionProvider.getDetailsStatus(
-          widget.user.username,
-        );
         final connectionStatus = connectionProvider.getConnectionStatus(
-          widget.user.username,
-        );
-        final isRequestingDetails = connectionProvider.isRequestingDetails(
-          widget.user.username,
+          widget.username,
         );
         final isSendingInterest = connectionProvider.isSendingInterest(
-          widget.user.username,
+          widget.username,
         );
         final isCancelling = connectionProvider.isCancellingRequest(
-          widget.user.username,
+          widget.username,
         );
 
-        return Column(
-          children: [
-            // Request Details Access Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed:
-                    detailsStatus == 'pending' ||
-                        detailsStatus == 'granted' ||
-                        isRequestingDetails
-                    ? null
-                    : () => connectionProvider.requestDetailsAccess(
-                        widget.user.username,
-                      ),
-                icon: isRequestingDetails
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        detailsStatus == 'granted'
-                            ? Icons.check_circle
-                            : detailsStatus == 'pending'
-                            ? Icons.pending
-                            : Icons.contact_phone,
-                      ),
-                label: Text(
-                  isRequestingDetails
-                      ? 'Requesting...'
-                      : detailsStatus == 'granted'
-                      ? 'Details Access Granted'
-                      : detailsStatus == 'pending'
-                      ? 'Request Pending'
-                      : 'Request Contact Details',
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: detailsStatus == 'granted'
-                      ? Colors.green
-                      : detailsStatus == 'pending'
-                      ? Colors.orange
-                      : Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Send Interest / Cancel Request / Connected Button
-            if (connectionStatus == 'accepted')
-              // Already connected
+        if (connectionStatus == 'accepted') {
+          return Column(
+            children: [
+              // Connected badge
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
                   color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade200),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -363,90 +808,127 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                   ],
                 ),
-              )
-            else if (connectionStatus == 'pending')
-              // Request sent - show Cancel button
-              Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.schedule, color: Colors.orange),
-                        SizedBox(width: 8),
-                        Text(
-                          'Request Sent',
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: isCancelling
-                          ? null
-                          : () => connectionProvider.cancelConnectionRequest(
-                              widget.user.username,
-                            ),
-                      icon: isCancelling
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.close),
-                      label: Text(
-                        isCancelling ? 'Cancelling...' : 'Cancel Request',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            else
-              // No request - show Send Interest button
+              ),
+              const SizedBox(height: 12),
+              // Chat button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: isSendingInterest
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.chat,
+                      arguments: {
+                        'userId': _user!.id,
+                        'username': _user!.username,
+                        'firstName': _user!.firstName,
+                        'lastName': _user!.lastName,
+                        'profilePhoto': _user!.profilePhoto,
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Chat Now'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        if (connectionStatus == 'pending') {
+          return Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.schedule, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text(
+                      'Interest Sent',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: isCancelling
                       ? null
-                      : () => connectionProvider.sendInterest(
-                          widget.user.username,
+                      : () => connectionProvider.cancelConnectionRequest(
+                          widget.username,
                         ),
-                  icon: isSendingInterest
+                  icon: isCancelling
                       ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.favorite),
+                      : const Icon(Icons.close),
                   label: Text(
-                    isSendingInterest ? 'Sending...' : 'Send Interest',
+                    isCancelling ? 'Cancelling...' : 'Cancel Request',
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink,
-                    foregroundColor: Colors.white,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-          ],
+            ],
+          );
+        }
+
+        // Default: Show Connect button
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: isSendingInterest
+                ? null
+                : () => connectionProvider.sendInterest(widget.username),
+            icon: isSendingInterest
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.favorite),
+            label: Text(isSendingInterest ? 'Sending...' : 'Connect'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         );
       },
     );

@@ -168,6 +168,70 @@ class ConnectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Cancel Photo Access Request
+  Future<void> cancelPhotoAccessRequest(String username) async {
+    if (_cancellingRequest.contains(username)) return;
+
+    _cancellingRequest.add(username);
+    notifyListeners();
+
+    debugPrint('[CONNECTION] Cancelling photo access request for: $username');
+
+    final response = await _repository.cancelRequest(
+      targetUsername: username,
+      type: 'photo',
+    );
+
+    _cancellingRequest.remove(username);
+
+    if (response.success) {
+      _photoAccessStatuses[username] = 'none';
+      Fluttertoast.showToast(
+        msg: "Photo access request cancelled",
+        backgroundColor: Colors.green,
+      );
+    } else {
+      Fluttertoast.showToast(
+        msg: response.message ?? "Failed to cancel request",
+        backgroundColor: Colors.red,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  // Cancel Details Access Request
+  Future<void> cancelDetailsAccessRequest(String username) async {
+    if (_cancellingRequest.contains(username)) return;
+
+    _cancellingRequest.add(username);
+    notifyListeners();
+
+    debugPrint('[CONNECTION] Cancelling details access request for: $username');
+
+    final response = await _repository.cancelRequest(
+      targetUsername: username,
+      type: 'details',
+    );
+
+    _cancellingRequest.remove(username);
+
+    if (response.success) {
+      _detailsStatuses[username] = 'none';
+      Fluttertoast.showToast(
+        msg: "Details access request cancelled",
+        backgroundColor: Colors.green,
+      );
+    } else {
+      Fluttertoast.showToast(
+        msg: response.message ?? "Failed to cancel request",
+        backgroundColor: Colors.red,
+      );
+    }
+
+    notifyListeners();
+  }
+
   // Fetch full connection status from server
   Future<void> fetchStatus(String username) async {
     debugPrint('[CONNECTION] Fetching status for: $username');

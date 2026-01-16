@@ -114,11 +114,21 @@ class AuthProvider with ChangeNotifier {
         );
 
         if (isSignup) {
-          Fluttertoast.showToast(
-            msg: "Step 1 complete! Now verify your phone number",
-            backgroundColor: Colors.green,
-          );
-          _navService.pushNamedAndRemoveUntil(AppRoutes.mobileSignup);
+          // SIGNUP: Check if profile is already complete
+          if (_currentUser!.isProfileComplete) {
+            debugPrint('[AUTH] Profile already complete, routing to FEED');
+            Fluttertoast.showToast(
+              msg: "Welcome back! Profile is complete.",
+              backgroundColor: Colors.green,
+            );
+            _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+          } else {
+            Fluttertoast.showToast(
+              msg: "Step 1 complete! Now verify your phone number",
+              backgroundColor: Colors.green,
+            );
+            _navService.pushNamedAndRemoveUntil(AppRoutes.mobileSignup);
+          }
         } else {
           // LOGIN: Route based on completion status
           _routeUserForLogin(_currentUser!);
@@ -209,7 +219,14 @@ class AuthProvider with ChangeNotifier {
         );
 
         if (isSignup) {
-          _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
+          // SIGNUP: Check if profile is already complete
+          if (_currentUser!.isProfileComplete) {
+            debugPrint('[AUTH] Profile already complete, routing to FEED');
+            _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+          } else {
+            debugPrint('[AUTH] Profile incomplete, routing to onboarding');
+            _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
+          }
         } else {
           // LOGIN: Route based on completion status
           _routeUserForLogin(_currentUser!);

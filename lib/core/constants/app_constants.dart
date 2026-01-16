@@ -17,8 +17,8 @@ class AppConstants {
   static const String usersUploadPhotos = '/users/upload-photos';
   static const String usersPhotos = '/users/photos';
   static const String usersFeed = '/users/feed';
-  static const String usersSearch =
-      '/users/search'; // Implied by ExploreRepository, though potentially admin-only in contract
+  static const String usersSearch = '/users/search';
+  static const String usersProfile = '/users'; // GET /users/:username
 
   // Connections
   static const String connectionsSend = '/connections/send';
@@ -45,6 +45,10 @@ class AppConstants {
   static const String chatConversations = '/chat/conversations';
   static const String chatHistory = '/chat/history';
   static const String chatUpload = '/chat/upload';
+  static const String chatMarkRead = '/chat/read';
+
+  // Socket.IO
+  static const String socketUrl = 'https://weddingzon-backend.onrender.com';
 
   // Admin
   static const String adminUsers = '/admin/users';

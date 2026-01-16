@@ -41,7 +41,8 @@ class ExploreRepository {
     }
   }
 
-  // Search users (MISSING API - backend needs to implement)
+  /// Search users with query
+  /// GET /api/users/search?q=query&page=1&limit=20
   Future<ApiResponse<List<dynamic>>> searchUsers({
     required String query,
     int page = 1,
@@ -50,9 +51,6 @@ class ExploreRepository {
       debugPrint('[EXPLORE_REPO] ========== SEARCH USERS ==========');
       debugPrint('[EXPLORE_REPO] Query: $query');
       debugPrint('[EXPLORE_REPO] Page: $page');
-
-      // THIS API DOESN'T EXIST YET - Backend needs to add:
-      // GET /api/users/search?query=john&page=1&limit=20
 
       final response = await _apiService.dio.get(
         AppConstants.usersSearch,
@@ -70,25 +68,13 @@ class ExploreRepository {
         return _handleErrorResponse(response);
       }
     } on DioException catch (e) {
-      debugPrint('[EXPLORE_REPO] Search error');
-
-      // If 404, API doesn't exist yet
-      if (e.response?.statusCode == 404) {
-        debugPrint(
-          '[EXPLORE_REPO] Search API not found - backend needs to implement',
-        );
-        return ApiResponse(
-          success: false,
-          message: 'Search feature not yet available',
-          data: [], // Return empty list instead of failing
-        );
-      }
-
+      debugPrint('[EXPLORE_REPO] Search error: ${e.message}');
       return _handleDioException(e);
     }
   }
 
-  // Get feed with filters (MISSING API - backend needs enhanced endpoint)
+  /// Get feed with filters
+  /// GET /api/users/search with filter parameters
   Future<ApiResponse<List<dynamic>>> getFeedWithFilters({
     required Map<String, dynamic> filters,
     int page = 1,
@@ -98,13 +84,10 @@ class ExploreRepository {
       debugPrint('[EXPLORE_REPO] Filters: $filters');
       debugPrint('[EXPLORE_REPO] Page: $page');
 
-      // Backend needs to enhance /api/users/feed to accept filters:
-      // GET /api/users/feed?minAge=25&maxAge=35&minHeight=5.5&religion=Hindu&page=1
-
       final queryParams = {'page': page, 'limit': 20, ...filters};
 
       final response = await _apiService.dio.get(
-        AppConstants.usersFeed,
+        AppConstants.usersSearch,
         queryParameters: queryParams,
         options: Options(extra: {'withCredentials': true}),
       );
@@ -121,16 +104,7 @@ class ExploreRepository {
         return _handleErrorResponse(response);
       }
     } on DioException catch (e) {
-      debugPrint('[EXPLORE_REPO] Filtered feed error');
-
-      // If backend doesn't support filters yet, just return regular feed
-      if (e.response?.statusCode == 400) {
-        debugPrint(
-          '[EXPLORE_REPO] Backend doesn\'t support filters yet, falling back to regular feed',
-        );
-        return getFeed();
-      }
-
+      debugPrint('[EXPLORE_REPO] Filtered feed error: ${e.message}');
       return _handleDioException(e);
     }
   }
