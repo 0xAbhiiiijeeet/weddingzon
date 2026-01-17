@@ -14,6 +14,7 @@ class SocketService {
   Function(String)? onUserStoppedTyping;
   Function()? onConnected;
   Function()? onDisconnected;
+  Function()? onUnauthorized; // New callback
   Function(dynamic)? onError;
 
   bool get isConnected => _isConnected;
@@ -22,11 +23,14 @@ class SocketService {
   void connect(String token, {String cookieString = ''}) {
     if (_socket != null && _isConnected) {
       debugPrint('[SOCKET] Already connected');
+      // If we're already connected, we might want to ensure the token is updated?
+      // For now, assume a disconnect -> connect flow for token updates.
       return;
     }
 
     debugPrint('[SOCKET] Connecting to ${AppConstants.socketUrl}');
-    debugPrint('[SOCKET] Using token: $token');
+    // Don't log full token for security/noise
+    debugPrint('[SOCKET] Using token: ${token.substring(0, 10)}...');
     if (cookieString.isNotEmpty) {
       debugPrint('[SOCKET] Using cookies for auth');
     }
@@ -35,7 +39,7 @@ class SocketService {
       _socket = io.io(
         AppConstants.socketUrl,
         io.OptionBuilder()
-            .setTransports(['websocket', 'polling']) // Try both transports
+            .setTransports(['websocket', 'polling'])
             .setAuth({'token': token})
             .setExtraHeaders({
               if (cookieString.isNotEmpty) 'Cookie': cookieString,
@@ -68,12 +72,25 @@ class SocketService {
 
     _socket?.onConnectError((error) {
       debugPrint('[SOCKET] Connection error: $error');
+
+      // Check for unauthorized error in connection
+      if (error.toString().toLowerCase().contains('unauthorized')) {
+        debugPrint('[SOCKET] Unauthorized error detected in connect_error');
+        onUnauthorized?.call();
+      }
+
       onError?.call(error);
     });
 
     _socket?.onError((error) {
       debugPrint('[SOCKET] Error: $error');
       onError?.call(error);
+    });
+
+    // Listen for explicit unauthorized event from server
+    _socket?.on('unauthorized', (_) {
+      debugPrint('[SOCKET] Received unauthorized event from server');
+      onUnauthorized?.call();
     });
 
     // Listen for incoming messages

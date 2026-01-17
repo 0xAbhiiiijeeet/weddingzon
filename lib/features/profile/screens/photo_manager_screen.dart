@@ -179,18 +179,37 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
               canDelete: true,
               currentProfileImageUrl: user.profilePhoto,
               onSetAsProfile: (index) async {
-                final photoId = user.photos[index].publicId;
+                final photo = user.photos[index];
+                debugPrint(
+                  '[PHOTO_MANAGER] Clicked Set Profile. Index: $index, URL: ${photo.url}',
+                );
+                debugPrint('[PHOTO_MANAGER] Photo publicId: ${photo.publicId}');
+
+                final photoId = photo.publicId;
                 if (photoId != null) {
                   await _setAsProfilePhoto(photoId);
                   if (mounted) {
                     Navigator.pop(context);
                   }
+                } else {
+                  debugPrint(
+                    '[PHOTO_MANAGER] ERROR: publicId is null for photo at index $index',
+                  );
+                  Fluttertoast.showToast(msg: "Error: Cannot identify photo");
                 }
               },
               onDelete: (index) async {
-                final photoId = user.photos[index].publicId;
+                final photo = user.photos[index];
+                debugPrint('[PHOTO_MANAGER] Clicked Delete. Index: $index');
+
+                final photoId = photo.publicId;
                 if (photoId != null) {
                   await _deletePhoto(photoId, index);
+                } else {
+                  debugPrint(
+                    '[PHOTO_MANAGER] ERROR: publicId is null for photo at index $index',
+                  );
+                  Fluttertoast.showToast(msg: "Error: Cannot identify photo");
                 }
               },
             ),

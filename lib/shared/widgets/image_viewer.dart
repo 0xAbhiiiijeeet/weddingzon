@@ -239,33 +239,47 @@ class _ImageViewerState extends State<ImageViewer> {
     Color color = Colors.white,
     bool isEnabled = true,
   }) {
-    return InkWell(
-      onTap: isEnabled ? onTap : null,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isEnabled
-              ? Colors.white.withAlpha(51)
-              : Colors.white.withAlpha(25),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isEnabled ? color.withAlpha(128) : Colors.grey.withAlpha(76),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isEnabled ? color : Colors.grey, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isEnabled ? color : Colors.grey,
-                fontWeight: FontWeight.w500,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          debugPrint(
+            '[IMAGE_VIEWER] Button tapped: $label, isEnabled: $isEnabled',
+          );
+          if (isEnabled) {
+            onTap();
+          } else {
+            debugPrint('[IMAGE_VIEWER] Button disabled');
+          }
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isEnabled
+                ? Colors.white.withAlpha(51)
+                : Colors.white.withAlpha(25),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isEnabled
+                  ? color.withAlpha(128)
+                  : Colors.grey.withAlpha(76),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: isEnabled ? color : Colors.grey, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isEnabled ? color : Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

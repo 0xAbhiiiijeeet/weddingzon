@@ -65,7 +65,8 @@ void main() async {
           create: (_) => ExploreProvider(exploreRepository),
         ),
         ChangeNotifierProvider(
-          create: (_) => ChatProvider(chatRepository, socketService),
+          create: (_) =>
+              ChatProvider(chatRepository, socketService, authRepository),
         ),
         Provider<SocketService>.value(value: socketService),
       ],

@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/message_model.dart';
 import '../../../core/services/socket_service.dart';
+import '../../auth/repositories/auth_repository.dart';
 import '../repository/chat_repository.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatRepository _chatRepository;
   final SocketService _socketService;
+  final AuthRepository _authRepository; // Add dependency
 
   // State
   List<Conversation> _conversations = [];
@@ -22,7 +24,11 @@ class ChatProvider extends ChangeNotifier {
   Timer? _typingTimer;
   bool _isTyping = false;
 
-  ChatProvider(this._chatRepository, this._socketService) {
+  ChatProvider(
+    this._chatRepository,
+    this._socketService,
+    this._authRepository,
+  ) {
     _setupSocketListeners();
   }
 
@@ -41,6 +47,29 @@ class ChatProvider extends ChangeNotifier {
     _socketService.onMessageReceived = _handleIncomingMessage;
     _socketService.onUserTyping = _handleUserTyping;
     _socketService.onUserStoppedTyping = _handleUserStoppedTyping;
+    _socketService.onUnauthorized =
+        _handleSocketUnauthorized; // Register listener
+  }
+
+  Future<void> _handleSocketUnauthorized() async {
+    debugPrint('[CHAT] Socket unauthorized! Attempting token refresh...');
+
+    // 1. Disconnect current socket
+    disconnectSocket();
+
+    // 2. Refresh token (AuthRepository handles concurrency)
+    final newToken = await _authRepository.refreshToken();
+
+    if (newToken != null && newToken.isNotEmpty) {
+      debugPrint('[CHAT] Token refreshed, reconnecting socket...');
+      // 3. Reconnect with new token
+      connectSocket(newToken);
+    } else {
+      debugPrint(
+        '[CHAT] Failed to refresh token, socket remains disconnected.',
+      );
+      // Optionally notify user or logout if critical
+    }
   }
 
   /// Set the current logged-in user ID - call this after auth
