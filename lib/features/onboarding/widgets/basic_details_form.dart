@@ -2,17 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/onboarding_provider.dart';
 
-class BasicDetailsForm extends StatelessWidget {
+class BasicDetailsForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
 
   const BasicDetailsForm({super.key, required this.formKey});
+
+  @override
+  State<BasicDetailsForm> createState() => _BasicDetailsFormState();
+}
+
+class _BasicDetailsFormState extends State<BasicDetailsForm> {
+  DateTime? _selectedDate;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.read<OnboardingProvider>();
 
     return Form(
-      key: formKey,
+      key: widget.formKey,
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -22,6 +29,42 @@ class BasicDetailsForm extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          // Profile Created For
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['created_for'],
+            decoration: const InputDecoration(
+              labelText: 'Profile Created For',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'Self',
+              'Son',
+              'Daughter',
+              'Brother',
+              'Sister',
+              'Friend',
+              'Relative',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => provider.updateField('created_for', v),
+            onSaved: (v) => provider.updateField('created_for', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Username
+          TextFormField(
+            initialValue: provider.formData['username'],
+            decoration: const InputDecoration(
+              labelText: 'Username *',
+              border: OutlineInputBorder(),
+              hintText: 'Choose a unique username',
+            ),
+            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+            onChanged: (v) => provider.updateField('username', v),
+            onSaved: (v) => provider.updateField('username', v),
+          ),
+          const SizedBox(height: 16),
+
+          // First Name
           TextFormField(
             initialValue: provider.formData['first_name'],
             decoration: const InputDecoration(
@@ -29,10 +72,12 @@ class BasicDetailsForm extends StatelessWidget {
               border: OutlineInputBorder(),
             ),
             validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+            onChanged: (v) => provider.updateField('first_name', v),
             onSaved: (v) => provider.updateField('first_name', v),
           ),
           const SizedBox(height: 16),
 
+          // Last Name
           TextFormField(
             initialValue: provider.formData['last_name'],
             decoration: const InputDecoration(
@@ -40,22 +85,51 @@ class BasicDetailsForm extends StatelessWidget {
               border: OutlineInputBorder(),
             ),
             validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+            onChanged: (v) => provider.updateField('last_name', v),
             onSaved: (v) => provider.updateField('last_name', v),
           ),
           const SizedBox(height: 16),
 
+          // Date of Birth with Date Picker
           TextFormField(
-            initialValue: provider.formData['dob'],
+            readOnly: true,
             decoration: const InputDecoration(
-              labelText: 'Date of Birth (YYYY-MM-DD) *',
+              labelText: 'Date of Birth *',
               border: OutlineInputBorder(),
-              hintText: '1995-05-15',
+              suffixIcon: Icon(Icons.calendar_today),
             ),
-            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-            onSaved: (v) => provider.updateField('dob', v),
+            controller: TextEditingController(
+              text: _selectedDate != null || provider.formData['dob'] != null
+                  ? (provider.formData['dob'] as String?)?.split('T')[0] ?? ''
+                  : '',
+            ),
+            onTap: () async {
+              final DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate ?? DateTime(2000),
+                firstDate: DateTime(1950),
+                lastDate: DateTime.now().subtract(
+                  const Duration(days: 18 * 365),
+                ),
+                helpText: 'Select Date of Birth',
+              );
+              if (picked != null) {
+                setState(() {
+                  _selectedDate = picked;
+                });
+                provider.updateField('dob', picked.toIso8601String());
+              }
+            },
+            validator: (v) {
+              if (provider.formData['dob'] == null) {
+                return 'Date of Birth is required';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
 
+          // Gender
           DropdownButtonFormField<String>(
             initialValue: provider.formData['gender'],
             decoration: const InputDecoration(
@@ -73,25 +147,33 @@ class BasicDetailsForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // Height
           DropdownButtonFormField<String>(
             initialValue: provider.formData['height'],
             decoration: const InputDecoration(
               labelText: 'Height',
               border: OutlineInputBorder(),
             ),
-            items: List.generate(36, (i) {
-              int feet = 4 + (i ~/ 12);
-              int inches = i % 12;
-              return DropdownMenuItem(
-                value: "$feet'$inches\"",
-                child: Text("$feet'$inches\""),
-              );
-            }),
+            items: [
+              '4\'6"',
+              '4\'8"',
+              '4\'10"',
+              '5\'0"',
+              '5\'2"',
+              '5\'4"',
+              '5\'6"',
+              '5\'8"',
+              '5\'10"',
+              '6\'0"',
+              '6\'2"',
+              '6\'4"',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             onChanged: (v) => provider.updateField('height', v),
             onSaved: (v) => provider.updateField('height', v),
           ),
           const SizedBox(height: 16),
 
+          // Marital Status
           DropdownButtonFormField<String>(
             initialValue: provider.formData['marital_status'],
             decoration: const InputDecoration(
@@ -102,11 +184,132 @@ class BasicDetailsForm extends StatelessWidget {
               'Never Married',
               'Divorced',
               'Widowed',
-              'Separated',
+              'Awaiting Divorce',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('marital_status', v),
             onSaved: (v) => provider.updateField('marital_status', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Mother Tongue
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['mother_tongue'],
+            decoration: const InputDecoration(
+              labelText: 'Mother Tongue',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'Hindi',
+              'English',
+              'Marathi',
+              'Tamil',
+              'Telugu',
+              'Bengali',
+              'Gujarati',
+              'Kannada',
+              'Malayalam',
+              'Punjabi',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => provider.updateField('mother_tongue', v),
+            onSaved: (v) => provider.updateField('mother_tongue', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Disability Status
+          Consumer<OnboardingProvider>(
+            builder: (context, provider, _) {
+              final disability = provider.formData['disability'];
+              return Column(
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: disability,
+                    decoration: const InputDecoration(
+                      labelText: 'Disability Status',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ['None', 'Physical', 'Mental', 'Other']
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) => provider.updateField('disability', v),
+                    onSaved: (v) => provider.updateField('disability', v),
+                  ),
+                  if (disability != null && disability != 'None') ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      initialValue: provider.formData['disability_description'],
+                      decoration: const InputDecoration(
+                        labelText: 'Disability Description',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                      onChanged: (v) =>
+                          provider.updateField('disability_description', v),
+                      onSaved: (v) =>
+                          provider.updateField('disability_description', v),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Aadhar Number
+          TextFormField(
+            initialValue: provider.formData['aadhar_number'],
+            decoration: const InputDecoration(
+              labelText: 'Aadhar Number (Optional)',
+              border: OutlineInputBorder(),
+              hintText: '12-digit number',
+            ),
+            keyboardType: TextInputType.number,
+            maxLength: 12,
+            onChanged: (v) => provider.updateField('aadhar_number', v),
+            onSaved: (v) => provider.updateField('aadhar_number', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Blood Group
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['blood_group'],
+            decoration: const InputDecoration(
+              labelText: 'Blood Group',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'A+',
+              'A-',
+              'B+',
+              'B-',
+              'AB+',
+              'AB-',
+              'O+',
+              'O-',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => provider.updateField('blood_group', v),
+            onSaved: (v) => provider.updateField('blood_group', v),
+          ),
+          const SizedBox(height: 16),
+
+          // About Me
+          TextFormField(
+            initialValue: provider.formData['about_me'],
+            decoration: const InputDecoration(
+              labelText: 'About Me',
+              border: OutlineInputBorder(),
+              hintText: 'Tell us about yourself (min 50 characters)...',
+            ),
+            maxLines: 4,
+            maxLength: 500,
+            validator: (v) {
+              if (v != null && v.isNotEmpty && v.length < 50) {
+                return 'Minimum 50 characters required';
+              }
+              return null;
+            },
+            onChanged: (v) => provider.updateField('about_me', v),
+            onSaved: (v) => provider.updateField('about_me', v),
           ),
         ],
       ),

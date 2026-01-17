@@ -59,13 +59,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _showFilters() {
+    final provider = context.read<ExploreProvider>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FilterBottomSheet(
+        initialFilters: provider.filters,
         onApply: (filters) {
-          context.read<ExploreProvider>().applyFilters(filters);
+          provider.applyFilters(filters);
         },
       ),
     );
@@ -146,28 +148,121 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
+                    // Sort By
+                    if (provider.filters['sortBy'] != null)
+                      _buildFilterChip(
+                        'Sort: ${_getSortLabel(provider.filters['sortBy'])}',
+                        () => provider.removeFilter('sortBy'),
+                      ),
+
+                    // Age Range
                     if (provider.filters['minAge'] != null ||
                         provider.filters['maxAge'] != null)
                       _buildFilterChip(
                         'Age: ${provider.filters['minAge'] ?? 18}-${provider.filters['maxAge'] ?? 60}',
                         () => provider.removeFilter('age'),
                       ),
-                    if (provider.filters['minHeight'] != null ||
-                        provider.filters['maxHeight'] != null)
+
+                    // Location
+                    if (provider.filters['country'] != null)
                       _buildFilterChip(
-                        'Height: ${provider.filters['minHeight'] ?? 4.0}-${provider.filters['maxHeight'] ?? 7.0} ft',
-                        () => provider.removeFilter('height'),
+                        provider.filters['country'],
+                        () => provider.removeFilter('country'),
                       ),
-                    if (provider.filters['religion'] != null)
+                    if (provider.filters['state'] != null)
                       _buildFilterChip(
-                        provider.filters['religion'],
-                        () => provider.removeFilter('religion'),
+                        provider.filters['state'],
+                        () => provider.removeFilter('state'),
                       ),
                     if (provider.filters['city'] != null)
                       _buildFilterChip(
                         provider.filters['city'],
                         () => provider.removeFilter('city'),
                       ),
+
+                    // Personal
+                    if (provider.filters['maritalStatus'] != null)
+                      _buildFilterChip(
+                        provider.filters['maritalStatus'],
+                        () => provider.removeFilter('maritalStatus'),
+                      ),
+                    if (provider.filters['minHeight'] != null)
+                      _buildFilterChip(
+                        'Height: ${provider.filters['minHeight']}+',
+                        () => provider.removeFilter('height'),
+                      ),
+
+                    // Cultural
+                    if (provider.filters['religion'] != null)
+                      _buildFilterChip(
+                        provider.filters['religion'],
+                        () => provider.removeFilter('religion'),
+                      ),
+                    if (provider.filters['community'] != null)
+                      _buildFilterChip(
+                        provider.filters['community'],
+                        () => provider.removeFilter('community'),
+                      ),
+                    if (provider.filters['motherTongue'] != null)
+                      _buildFilterChip(
+                        provider.filters['motherTongue'],
+                        () => provider.removeFilter('motherTongue'),
+                      ),
+                    if (provider.filters['familyType'] != null)
+                      _buildFilterChip(
+                        '${provider.filters['familyType']} Family',
+                        () => provider.removeFilter('familyType'),
+                      ),
+                    if (provider.filters['brothers'] != null ||
+                        provider.filters['sisters'] != null)
+                      _buildFilterChip(
+                        'Siblings: ${provider.filters['brothers'] ?? 0}B, ${provider.filters['sisters'] ?? 0}S',
+                        () => provider.removeFilter('siblings'),
+                      ),
+
+                    // Professional
+                    if (provider.filters['highestEducation'] != null)
+                      _buildFilterChip(
+                        provider.filters['highestEducation'],
+                        () => provider.removeFilter('highestEducation'),
+                      ),
+                    if (provider.filters['occupation'] != null)
+                      _buildFilterChip(
+                        provider.filters['occupation'],
+                        () => provider.removeFilter('occupation'),
+                      ),
+                    if (provider.filters['annualIncome'] != null)
+                      _buildFilterChip(
+                        provider.filters['annualIncome'],
+                        () => provider.removeFilter('annualIncome'),
+                      ),
+
+                    // Lifestyle
+                    if (provider.filters['eatingHabits'] != null)
+                      _buildFilterChip(
+                        provider.filters['eatingHabits'],
+                        () => provider.removeFilter('eatingHabits'),
+                      ),
+                    if (provider.filters['smokingHabits'] != null)
+                      _buildFilterChip(
+                        'Smoking: ${provider.filters['smokingHabits']}',
+                        () => provider.removeFilter('smokingHabits'),
+                      ),
+
+                    // Property
+                    if (provider.filters['minLandArea'] != null ||
+                        provider.filters['maxLandArea'] != null)
+                      _buildFilterChip(
+                        'Land: ${provider.filters['minLandArea'] ?? 0}-${provider.filters['maxLandArea'] ?? 100} acres',
+                        () => provider.removeFilter('landArea'),
+                      ),
+                    if (provider.filters['propertyType'] != null)
+                      _buildFilterChip(
+                        provider.filters['propertyType'],
+                        () => provider.removeFilter('propertyType'),
+                      ),
+
+                    // Clear All Button
                     TextButton.icon(
                       onPressed: provider.clearFilters,
                       icon: const Icon(Icons.clear_all, size: 18),
@@ -274,5 +369,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
       ),
     );
+  }
+
+  String _getSortLabel(String sortKey) {
+    switch (sortKey) {
+      case 'newest':
+        return 'Newest First';
+      case 'age_asc':
+        return 'Youngest First';
+      case 'age_desc':
+        return 'Oldest First';
+      default:
+        return sortKey;
+    }
   }
 }

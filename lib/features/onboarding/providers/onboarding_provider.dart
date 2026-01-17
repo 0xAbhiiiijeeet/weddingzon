@@ -24,7 +24,8 @@ class OnboardingProvider extends ChangeNotifier {
   }
 
   void nextStep() {
-    if (_currentStep < 4) {
+    if (_currentStep < 7) {
+      // Updated from 4 to 7 to support 8 steps
       _currentStep++;
       notifyListeners();
     }

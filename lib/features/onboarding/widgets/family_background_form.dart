@@ -22,10 +22,11 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          // Father's Occupation/Status
           DropdownButtonFormField<String>(
             initialValue: provider.formData['father_status'],
             decoration: const InputDecoration(
-              labelText: "Father's Status",
+              labelText: "Father's Occupation/Status",
               border: OutlineInputBorder(),
             ),
             items: [
@@ -39,10 +40,11 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // Mother's Occupation/Status
           DropdownButtonFormField<String>(
             initialValue: provider.formData['mother_status'],
             decoration: const InputDecoration(
-              labelText: "Mother's Status",
+              labelText: "Mother's Occupation/Status",
               border: OutlineInputBorder(),
             ),
             items: [
@@ -57,30 +59,89 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // Brothers
           TextFormField(
             initialValue: provider.formData['brothers']?.toString(),
             decoration: const InputDecoration(
-              labelText: 'Number of Brothers',
+              labelText: 'Number of Brothers (0-10)',
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v != null && v.isNotEmpty) {
+                final num = int.tryParse(v);
+                if (num == null || num < 0 || num > 10) {
+                  return 'Enter a number between 0 and 10';
+                }
+              }
+              return null;
+            },
+            onChanged: (v) =>
+                provider.updateField('brothers', int.tryParse(v ?? '') ?? 0),
             onSaved: (v) =>
-                provider.updateField('brothers', int.tryParse(v ?? '0') ?? 0),
+                provider.updateField('brothers', int.tryParse(v ?? '') ?? 0),
           ),
           const SizedBox(height: 16),
 
+          // Sisters
           TextFormField(
             initialValue: provider.formData['sisters']?.toString(),
             decoration: const InputDecoration(
-              labelText: 'Number of Sisters',
+              labelText: 'Number of Sisters (0-10)',
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v != null && v.isNotEmpty) {
+                final num = int.tryParse(v);
+                if (num == null || num < 0 || num > 10) {
+                  return 'Enter a number between 0 and 10';
+                }
+              }
+              return null;
+            },
+            onChanged: (v) =>
+                provider.updateField('sisters', int.tryParse(v ?? '') ?? 0),
             onSaved: (v) =>
-                provider.updateField('sisters', int.tryParse(v ?? '0') ?? 0),
+                provider.updateField('sisters', int.tryParse(v ?? '') ?? 0),
           ),
           const SizedBox(height: 16),
 
+          // Family Status
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['family_status'],
+            decoration: const InputDecoration(
+              labelText: 'Family Status',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'Middle Class',
+              'Upper Middle Class',
+              'Rich',
+              'Affluent',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => provider.updateField('family_status', v),
+            onSaved: (v) => provider.updateField('family_status', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Family Type
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['family_type'],
+            decoration: const InputDecoration(
+              labelText: 'Family Type',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'Nuclear',
+              'Joint',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => provider.updateField('family_type', v),
+            onSaved: (v) => provider.updateField('family_type', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Family Values
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_values'],
             decoration: const InputDecoration(
@@ -97,18 +158,36 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // Family Annual Income
           DropdownButtonFormField<String>(
-            initialValue: provider.formData['family_type'],
+            initialValue: provider.formData['annual_income'],
             decoration: const InputDecoration(
-              labelText: 'Family Type',
+              labelText: 'Family Annual Income',
               border: OutlineInputBorder(),
             ),
             items: [
-              'Nuclear',
-              'Joint',
+              'Below 5 LPA',
+              '5-10 LPA',
+              '10-15 LPA',
+              '15-20 LPA',
+              '20-30 LPA',
+              'Above 30 LPA',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (v) => provider.updateField('family_type', v),
-            onSaved: (v) => provider.updateField('family_type', v),
+            onChanged: (v) => provider.updateField('annual_income', v),
+            onSaved: (v) => provider.updateField('annual_income', v),
+          ),
+          const SizedBox(height: 16),
+
+          // Family Location
+          TextFormField(
+            initialValue: provider.formData['family_location'],
+            decoration: const InputDecoration(
+              labelText: 'Family Location',
+              border: OutlineInputBorder(),
+              hintText: 'City where your family lives',
+            ),
+            onChanged: (v) => provider.updateField('family_location', v),
+            onSaved: (v) => provider.updateField('family_location', v),
           ),
         ],
       ),

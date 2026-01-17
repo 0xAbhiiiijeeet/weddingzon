@@ -17,39 +17,42 @@ class LifestyleForm extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           const Text(
-            'Lifestyle & About You',
+            'Lifestyle & Appearance',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
 
           DropdownButtonFormField<String>(
-            initialValue: provider.formData['religion'],
+            initialValue: provider.formData['appearance'],
             decoration: const InputDecoration(
-              labelText: 'Religion *',
+              labelText: 'Appearance',
               border: OutlineInputBorder(),
             ),
             items: [
-              'Hindu',
-              'Muslim',
-              'Christian',
-              'Sikh',
-              'Buddhist',
-              'Jain',
-              'Other',
+              'Fair',
+              'Wheatish',
+              'Dark',
+              'Very Fair',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            validator: (v) => v == null ? 'Required' : null,
-            onChanged: (v) => provider.updateField('religion', v),
-            onSaved: (v) => provider.updateField('religion', v),
+            onChanged: (v) => provider.updateField('appearance', v),
+            onSaved: (v) => provider.updateField('appearance', v),
           ),
           const SizedBox(height: 16),
 
-          TextFormField(
-            initialValue: provider.formData['community'],
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['living_status'],
             decoration: const InputDecoration(
-              labelText: 'Community/Caste',
+              labelText: 'Living Status',
               border: OutlineInputBorder(),
             ),
-            onSaved: (v) => provider.updateField('community', v),
+            items: [
+              'With Family',
+              'Alone',
+              'With Relatives',
+              'Hostel/PG',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => provider.updateField('living_status', v),
+            onSaved: (v) => provider.updateField('living_status', v),
           ),
           const SizedBox(height: 16),
 
@@ -79,7 +82,7 @@ class LifestyleForm extends StatelessWidget {
             items: [
               'No',
               'Occasionally',
-              'Regularly',
+              'Yes',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             onChanged: (v) => provider.updateField('smoking_habits', v),
             onSaved: (v) => provider.updateField('smoking_habits', v),
@@ -95,23 +98,10 @@ class LifestyleForm extends StatelessWidget {
             items: [
               'No',
               'Socially',
-              'Regularly',
+              'Yes',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             onChanged: (v) => provider.updateField('drinking_habits', v),
             onSaved: (v) => provider.updateField('drinking_habits', v),
-          ),
-          const SizedBox(height: 16),
-
-          TextFormField(
-            initialValue: provider.formData['about_me'],
-            decoration: const InputDecoration(
-              labelText: 'About Me',
-              border: OutlineInputBorder(),
-              hintText: 'Tell us about yourself...',
-            ),
-            maxLines: 5,
-            maxLength: 500,
-            onSaved: (v) => provider.updateField('about_me', v),
           ),
         ],
       ),

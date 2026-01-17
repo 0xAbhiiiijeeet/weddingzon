@@ -175,14 +175,26 @@ class ExploreProvider with ChangeNotifier {
   }
 
   Future<void> removeFilter(String filterKey) async {
-    if (filterKey == 'age') {
-      _filters.remove('minAge');
-      _filters.remove('maxAge');
-    } else if (filterKey == 'height') {
-      _filters.remove('minHeight');
-      _filters.remove('maxHeight');
-    } else {
-      _filters.remove(filterKey);
+    // Handle compound filters (ranges)
+    switch (filterKey) {
+      case 'age':
+        _filters.remove('minAge');
+        _filters.remove('maxAge');
+        break;
+      case 'height':
+        _filters.remove('minHeight');
+        _filters.remove('maxHeight');
+        break;
+      case 'landArea':
+        _filters.remove('minLandArea');
+        _filters.remove('maxLandArea');
+        break;
+      case 'siblings':
+        _filters.remove('brothers');
+        _filters.remove('sisters');
+        break;
+      default:
+        _filters.remove(filterKey);
     }
 
     debugPrint('[EXPLORE] Filter removed: $filterKey');

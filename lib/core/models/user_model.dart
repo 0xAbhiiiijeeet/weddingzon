@@ -22,6 +22,7 @@ class User {
   final String? maritalStatus;
   final String? motherTongue;
   final String? disability;
+  final String? disabilityDescription;
   final String? aadharNumber;
   final String? bloodGroup;
 
@@ -62,6 +63,14 @@ class User {
   final String? drinkingHabits;
   final List<String> hobbies;
 
+  // Property & Assets
+  final double? landArea;
+  final String? propertyType;
+
+  // Contact Details
+  final String? alternateMobile;
+  final String? suitableTimeToCall;
+
   // Other
   final String? aboutMe;
   final String? profilePhoto;
@@ -87,6 +96,7 @@ class User {
     this.maritalStatus,
     this.motherTongue,
     this.disability,
+    this.disabilityDescription,
     this.aadharNumber,
     this.bloodGroup,
     this.country,
@@ -118,6 +128,10 @@ class User {
     this.smokingHabits,
     this.drinkingHabits,
     this.hobbies = const [],
+    this.landArea,
+    this.propertyType,
+    this.alternateMobile,
+    this.suitableTimeToCall,
     this.aboutMe,
     this.profilePhoto,
     this.photos = const [],
@@ -155,6 +169,7 @@ class User {
       maritalStatus: json['marital_status'],
       motherTongue: json['mother_tongue'],
       disability: json['disability'],
+      disabilityDescription: json['disability_description'],
       aadharNumber: json['aadhar_number'],
       bloodGroup: json['blood_group'],
       country: json['country'],
@@ -186,6 +201,10 @@ class User {
       smokingHabits: json['smoking_habits'],
       drinkingHabits: json['drinking_habits'],
       hobbies: List<String>.from(json['hobbies'] ?? []),
+      landArea: json['land_area']?.toDouble(),
+      propertyType: json['property_type'],
+      alternateMobile: json['alternate_mobile'],
+      suitableTimeToCall: json['suitable_time_to_call'],
       aboutMe: json['about_me'],
       profilePhoto: json['profilePhoto'],
       photos:
@@ -215,6 +234,7 @@ class User {
       'marital_status': maritalStatus,
       'mother_tongue': motherTongue,
       'disability': disability,
+      'disability_description': disabilityDescription,
       'aadhar_number': aadharNumber,
       'blood_group': bloodGroup,
       'country': country,
@@ -246,6 +266,10 @@ class User {
       'smoking_habits': smokingHabits,
       'drinking_habits': drinkingHabits,
       'hobbies': hobbies,
+      'land_area': landArea,
+      'property_type': propertyType,
+      'alternate_mobile': alternateMobile,
+      'suitable_time_to_call': suitableTimeToCall,
       'about_me': aboutMe,
       'profilePhoto': profilePhoto,
       'photos': photos.map((p) => p.toJson()).toList(),
