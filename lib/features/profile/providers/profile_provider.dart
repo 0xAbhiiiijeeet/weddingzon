@@ -46,29 +46,44 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<bool> deletePhoto(String photoId) async {
+    debugPrint('[PROFILE_PROVIDER] Deleting photo: $photoId');
     _setLoading(true);
     final response = await _userRepository.deletePhoto(photoId);
     _setLoading(false);
 
-    if (response.success) {
+    if (response.success && response.data != null) {
+      if (_currentUser != null) {
+        debugPrint(
+          '[PROFILE_PROVIDER] Photo deleted, updating local user data',
+        );
+        _currentUser = _currentUser!.copyWith(photos: response.data);
+      }
       notifyListeners();
       return true;
     }
+    debugPrint('[PROFILE_PROVIDER] Delete photo failed: ${response.message}');
     return false;
   }
 
   Future<bool> setProfilePhoto(String photoId) async {
+    debugPrint('[PROFILE_PROVIDER] Setting profile photo: $photoId');
     _setLoading(true);
-    final response = await _userRepository.updatePhoto(
-      photoId,
-      isProfile: true,
-    );
+    final response = await _userRepository.setAsProfilePhoto(photoId);
     _setLoading(false);
 
-    if (response.success) {
+    if (response.success && response.data != null) {
+      if (_currentUser != null) {
+        debugPrint(
+          '[PROFILE_PROVIDER] Profile photo updated, updating local user data',
+        );
+        _currentUser = _currentUser!.copyWith(photos: response.data);
+      }
       notifyListeners();
       return true;
     }
+    debugPrint(
+      '[PROFILE_PROVIDER] Set profile photo failed: ${response.message}',
+    );
     return false;
   }
 

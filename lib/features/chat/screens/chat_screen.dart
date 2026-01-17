@@ -33,12 +33,25 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<ChatProvider>();
       final displayName = _getDisplayName();
-      context.read<ChatProvider>().openChat(
+
+      provider.openChat(
         widget.userId,
         username: displayName,
         profilePhoto: widget.profilePhoto,
       );
+
+      // Debug socket connection
+      debugPrint('[CHAT_SCREEN] Opened chat with ${widget.userId}');
+      debugPrint(
+        '[CHAT_SCREEN] Socket connected: ${provider.isSocketConnected}',
+      );
+      debugPrint('[CHAT_SCREEN] My user ID: ${provider.myUserId}');
+
+      if (!provider.isSocketConnected) {
+        debugPrint('[CHAT_SCREEN] ⚠️ WARNING: Socket is not connected!');
+      }
     });
   }
 
@@ -73,56 +86,65 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: theme.colorScheme.primaryContainer,
-              backgroundImage: widget.profilePhoto != null
-                  ? CachedNetworkImageProvider(widget.profilePhoto!)
-                  : null,
-              child: widget.profilePhoto == null
-                  ? Text(
-                      _getDisplayName().isNotEmpty
-                          ? _getDisplayName()[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getDisplayName(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Consumer<ChatProvider>(
-                    builder: (context, provider, _) {
-                      if (provider.isOtherUserTyping) {
-                        return Text(
-                          'typing...',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.primary,
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
+        title: InkWell(
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              '/profile/user',
+              arguments: widget.username,
+            );
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                backgroundImage: widget.profilePhoto != null
+                    ? CachedNetworkImageProvider(widget.profilePhoto!)
+                    : null,
+                child: widget.profilePhoto == null
+                    ? Text(
+                        _getDisplayName().isNotEmpty
+                            ? _getDisplayName()[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getDisplayName(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Consumer<ChatProvider>(
+                      builder: (context, provider, _) {
+                        if (provider.isOtherUserTyping) {
+                          return Text(
+                            'typing...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.primary,
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         // actions: [
         //   IconButton(
@@ -211,10 +233,20 @@ class _ChatScreenState extends State<ChatScreen> {
               return MessageInput(
                 isSending: provider.isSending,
                 onSendMessage: (text) {
+                  debugPrint('[CHAT_SCREEN] Sending text message');
                   provider.sendMessage(widget.userId, text);
                 },
-                onSendImage: (file) {
-                  provider.sendImage(widget.userId, file);
+                onSendImage: (file) async {
+                  debugPrint('[CHAT_SCREEN] Sending image');
+                  final success = await provider.sendImage(widget.userId, file);
+                  if (!success && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to send image'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
                 onTypingStarted: () => provider.startTyping(),
                 onTypingStopped: () => provider.stopTyping(),

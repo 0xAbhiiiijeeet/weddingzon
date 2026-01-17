@@ -32,7 +32,7 @@ class MyProfileScreen extends StatelessWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              await authProvider.checkAuthStatus();
+              await authProvider.refreshUser();
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),

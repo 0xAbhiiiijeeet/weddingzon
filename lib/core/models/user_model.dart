@@ -271,8 +271,42 @@ class User {
       'alternate_mobile': alternateMobile,
       'suitable_time_to_call': suitableTimeToCall,
       'about_me': aboutMe,
-      'profilePhoto': profilePhoto,
-      'photos': photos.map((p) => p.toJson()).toList(),
     };
+  }
+
+  User copyWith({
+    String? id,
+    String? username,
+    String? email,
+    String? phone,
+    String? role,
+    bool? isPhoneVerified,
+    bool? isProfileComplete,
+    String? firstName,
+    String? lastName,
+    DateTime? dob,
+    String? gender,
+    String? religion,
+    String? aboutMe,
+    String? profilePhoto,
+    List<Photo>? photos,
+  }) {
+    return User(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
+      isProfileComplete: isProfileComplete ?? this.isProfileComplete,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      dob: dob ?? this.dob,
+      gender: gender ?? this.gender,
+      religion: religion ?? this.religion,
+      aboutMe: aboutMe ?? this.aboutMe,
+      profilePhoto: profilePhoto ?? this.profilePhoto,
+      photos: photos ?? this.photos,
+    );
   }
 }

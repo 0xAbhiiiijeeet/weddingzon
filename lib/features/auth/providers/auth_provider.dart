@@ -314,4 +314,23 @@ class AuthProvider with ChangeNotifier {
       Fluttertoast.showToast(msg: 'Logout failed', backgroundColor: Colors.red);
     }
   }
+
+  /// Refreshes the current user data from the server without triggering navigation
+  Future<void> refreshUser() async {
+    debugPrint('[AUTH] ========== REFRESH USER (NO NAV) ==========');
+    try {
+      final response = await _authRepository.getCurrentUser();
+
+      if (response.success && response.data != null) {
+        _currentUser = response.data;
+        await _saveUserLocally(_currentUser!);
+        notifyListeners();
+        debugPrint('[AUTH] User refreshed successfully');
+      } else {
+        debugPrint('[AUTH] Refresh failed: ${response.message}');
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Refresh error: $e');
+    }
+  }
 }

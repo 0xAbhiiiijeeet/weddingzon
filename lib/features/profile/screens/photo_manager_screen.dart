@@ -7,6 +7,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import '../providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/models/photo_model.dart';
+import '../../../shared/widgets/image_viewer.dart';
+import '../../../core/services/api_service.dart'; // Added import
 
 class PhotoManagerScreen extends StatefulWidget {
   const PhotoManagerScreen({super.key});
@@ -154,124 +156,158 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     );
   }
 
-  Widget _buildPhotoCard(Photo photo, bool isProfile) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CachedNetworkImage(
-            imageUrl: photo.url,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(
-              color: Colors.grey.shade300,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-            errorWidget: (context, url, error) => Container(
-              color: Colors.grey.shade300,
-              child: const Icon(Icons.error, color: Colors.red),
+  Widget _buildPhotoCard(Photo photo, bool isFirstPhoto) {
+    final isProfilePhoto =
+        photo.isProfile ||
+        (context.read<AuthProvider>().currentUser?.profilePhoto == photo.url);
+
+    return InkWell(
+      onTap: () {
+        final user = context.read<AuthProvider>().currentUser;
+        if (user == null) return;
+
+        final currentIndex = user.photos.indexWhere((p) => p.url == photo.url);
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ImageViewer(
+              photos: user.photos,
+              initialIndex: currentIndex >= 0 ? currentIndex : 0,
+              hasAccess: true, // User always has access to their own photos
+              canSetProfile: true,
+              canDelete: true,
+              currentProfileImageUrl: user.profilePhoto,
+              onSetAsProfile: (index) async {
+                final photoId = user.photos[index].publicId;
+                if (photoId != null) {
+                  await _setAsProfilePhoto(photoId);
+                  if (mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              onDelete: (index) async {
+                final photoId = user.photos[index].publicId;
+                if (photoId != null) {
+                  await _deletePhoto(photoId, index);
+                }
+              },
             ),
           ),
-        ),
+        );
+      },
+      child: FutureBuilder<Map<String, String>>(
+        future: _getAuthHeaders(),
+        builder: (context, snapshot) {
+          final headers = snapshot.data ?? {};
 
-        if (isProfile || photo.isProfile)
-          Positioned(
-            top: 8,
-            left: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green,
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Profile',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                child: CachedNetworkImage(
+                  imageUrl: photo.url,
+                  httpHeaders: headers, // Pass auth headers
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: Colors.grey.shade300,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) {
+                    debugPrint('[PHOTO_CARD] Error loading: $url');
+                    debugPrint('[PHOTO_CARD] Error: $error');
+                    return Container(
+                      color: Colors.grey.shade300,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error, color: Colors.red, size: 32),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Failed to load',
+                            style: TextStyle(color: Colors.red, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
-            ),
-          ),
-
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.7),
-                  Colors.transparent,
-                ],
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (!isProfile && !photo.isProfile && photo.publicId != null)
-                  _buildActionButton(
-                    icon: Icons.star_border,
-                    label: 'Set as Profile',
-                    onTap: () => _setAsProfilePhoto(photo.publicId!),
+              if (isProfilePhoto)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: (color ?? Colors.white).withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: color == Colors.red ? Colors.white : Colors.black,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: color == Colors.red ? Colors.white : Colors.black,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
+  Future<Map<String, String>> _getAuthHeaders() async {
+    try {
+      final apiService = context.read<ApiService>();
+      final cookieString = await apiService.getCookieString();
+      if (cookieString.isNotEmpty) {
+        return {'Cookie': cookieString};
+      }
+    } catch (e) {
+      debugPrint('Error getting auth headers: $e');
+    }
+    return {};
+  }
+
+  Future<void> _deletePhoto(String photoId, int index) async {
+    debugPrint(
+      '[PHOTO_MANAGER] Requesting delete for photo: $photoId at index $index',
+    );
+    final provider = context.read<ProfileProvider>();
+    final success = await provider.deletePhoto(photoId);
+
+    if (!mounted) return;
+
+    if (success) {
+      debugPrint(
+        '[PHOTO_MANAGER] Photo deleted successfully. Refreshing user...',
+      );
+      await context.read<AuthProvider>().refreshUser();
+      Fluttertoast.showToast(
+        msg: 'Photo deleted',
+        backgroundColor: Colors.green,
+      );
+    } else {
+      debugPrint('[PHOTO_MANAGER] Failed to delete photo');
+      Fluttertoast.showToast(
+        msg: 'Failed to delete photo',
+        backgroundColor: Colors.red,
+      );
+    }
+  }
+
   Future<void> _pickAndUploadPhotos() async {
     try {
-      // Get current photo count
       final authProvider = context.read<AuthProvider>();
       final currentPhotoCount = authProvider.currentUser?.photos.length ?? 0;
       final remainingSlots = 10 - currentPhotoCount;
@@ -292,7 +328,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
       if (pickedFiles.isEmpty) return;
 
-      // Limit to remaining slots
       final filesToUpload = pickedFiles.take(remainingSlots).toList();
       if (filesToUpload.length < pickedFiles.length) {
         Fluttertoast.showToast(
@@ -311,9 +346,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       if (!mounted) return;
 
       if (success) {
-        // Refresh user data to get updated photos
-        await context.read<AuthProvider>().checkAuthStatus();
-
+        await context.read<AuthProvider>().refreshUser();
         Fluttertoast.showToast(
           msg: '${files.length} photo(s) uploaded successfully',
           backgroundColor: Colors.green,
@@ -338,18 +371,21 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   }
 
   Future<void> _setAsProfilePhoto(String photoId) async {
+    debugPrint('[PHOTO_MANAGER] Requesting set as profile for: $photoId');
     final provider = context.read<ProfileProvider>();
     final success = await provider.setProfilePhoto(photoId);
 
     if (!mounted) return;
 
     if (success) {
-      await context.read<AuthProvider>().checkAuthStatus();
+      debugPrint('[PHOTO_MANAGER] Profile photo updated. Refreshing user...');
+      await context.read<AuthProvider>().refreshUser();
       Fluttertoast.showToast(
         msg: 'Profile photo updated',
         backgroundColor: Colors.green,
       );
     } else {
+      debugPrint('[PHOTO_MANAGER] Failed to update profile photo');
       Fluttertoast.showToast(
         msg: 'Failed to update profile photo',
         backgroundColor: Colors.red,
@@ -369,7 +405,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
             Text('• Upload clear, recent photos'),
             Text('• Face should be clearly visible'),
             Text('• Avoid group photos'),
-            Text('• No sunglasses in profile photo'),
             Text('• Maximum 10 photos allowed'),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/services/api_service.dart';
 import 'core/services/storage_service.dart';
+import 'shared/widgets/connectivity_wrapper.dart';
 import 'core/services/navigation_service.dart';
 import 'core/services/socket_service.dart';
 import 'core/routes/app_routes.dart';
@@ -78,19 +79,21 @@ class WeddingZonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'WeddingZon',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return ConnectivityWrapper(
+      child: MaterialApp(
+        title: 'WeddingZon',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        navigatorKey: Provider.of<NavigationService>(
+          context,
+          listen: false,
+        ).navigatorKey,
+        initialRoute: AppRoutes.landing,
+        routes: AppRoutes.routes,
       ),
-      navigatorKey: Provider.of<NavigationService>(
-        context,
-        listen: false,
-      ).navigatorKey,
-      initialRoute: AppRoutes.landing,
-      routes: AppRoutes.routes,
     );
   }
 }

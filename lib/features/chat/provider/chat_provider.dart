@@ -170,12 +170,20 @@ class ChatProvider extends ChangeNotifier {
     String? mediaUrl,
   }) {
     debugPrint(
-      '[CHAT] sendMessage called: receiverId=$receiverId, message=$message',
+      '[CHAT] sendMessage called: receiverId=$receiverId, message="$message", type=${type.value}, mediaUrl=$mediaUrl',
     );
 
-    if (message.trim().isEmpty) {
-      debugPrint('[CHAT] Message is empty, ignoring');
-      return;
+    // Validation based on message type
+    if (type == MessageType.text) {
+      if (message.trim().isEmpty) {
+        debugPrint('[CHAT] Text message is empty, ignoring');
+        return;
+      }
+    } else if (type == MessageType.image) {
+      if (mediaUrl == null || mediaUrl.isEmpty) {
+        debugPrint('[CHAT] Image message missing mediaUrl, ignoring');
+        return;
+      }
     }
 
     // Add to local state immediately (optimistic update)
@@ -197,19 +205,18 @@ class ChatProvider extends ChangeNotifier {
 
     // Send via socket if connected
     if (_socketService.isConnected) {
-      debugPrint('[CHAT] Socket connected, sending message...');
+      debugPrint('[CHAT] Socket connected, sending message via socket...');
       _socketService.sendMessage(
         receiverId: receiverId,
         message: message,
         type: type,
         mediaUrl: mediaUrl,
       );
+      debugPrint('[CHAT] Message sent via socket');
     } else {
       debugPrint(
         '[CHAT] WARNING: Socket not connected! Message added locally but NOT sent to server.',
       );
-      // Message is already added locally, user will see it
-      // When socket reconnects, they'd need to resend
     }
 
     // Stop typing indicator
@@ -220,24 +227,56 @@ class ChatProvider extends ChangeNotifier {
     _isSending = true;
     notifyListeners();
 
-    final response = await _chatRepository.uploadChatImage(file);
+    try {
+      debugPrint('[CHAT] Starting image upload...');
+      final response = await _chatRepository.uploadChatImage(file);
 
-    if (response.success && response.data != null) {
-      // For images, send the URL as mediaUrl (not as message content)
-      sendMessage(
-        receiverId,
-        '', // Empty message content for images
-        type: MessageType.image,
-        mediaUrl: response.data,
-      );
+      if (response.success && response.data != null) {
+        debugPrint('[CHAT] Image uploaded successfully: ${response.data}');
+
+        // Don't call sendMessage, handle it directly here
+        final newMessage = Message(
+          senderId: _myUserId ?? 'unknown',
+          receiverId: receiverId,
+          message: '', // Empty for images
+          type: MessageType.image,
+          mediaUrl: response.data,
+          createdAt: DateTime.now(),
+        );
+
+        // Add to local state
+        _messages.add(newMessage);
+        _updateConversationWithMessage(newMessage);
+
+        // Send via socket
+        if (_socketService.isConnected) {
+          debugPrint('[CHAT] Sending image message via socket...');
+          _socketService.sendMessage(
+            receiverId: receiverId,
+            message: '', // Empty message for images
+            type: MessageType.image,
+            mediaUrl: response.data,
+          );
+          debugPrint('[CHAT] Image message sent via socket');
+        } else {
+          debugPrint('[CHAT] WARNING: Socket not connected!');
+        }
+
+        _isSending = false;
+        notifyListeners();
+        return true;
+      } else {
+        debugPrint('[CHAT] Image upload failed: ${response.message}');
+        _isSending = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[CHAT] Error sending image: $e');
       _isSending = false;
       notifyListeners();
-      return true;
+      return false;
     }
-
-    _isSending = false;
-    notifyListeners();
-    return false;
   }
 
   void _handleIncomingMessage(Message message) {

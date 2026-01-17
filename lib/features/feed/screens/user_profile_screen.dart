@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../models/feed_user.dart';
 import '../providers/connection_provider.dart';
+import '../../../shared/widgets/image_viewer.dart';
 import '../../profile/repositories/user_repository.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/routes/app_routes.dart';
@@ -405,8 +406,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         itemCount: photos.length,
                         itemBuilder: (context, index) {
                           final photo = photos[index];
-                          final isRestricted =
-                              photo.restricted && !hasPhotoAccess;
+
+                          // NEW LOGIC: Profile photos always visible, others require access
+                          String imageUrl;
+                          bool shouldApplyLocalBlur = false;
+
+                          if (photo.isProfile) {
+                            // Profile photos are ALWAYS visible
+                            imageUrl = photo.url;
+                          } else if (hasPhotoAccess) {
+                            // User has permission - show original
+                            imageUrl = photo.url;
+                          } else {
+                            // User DOESN'T have permission - blur non-profile photos
+                            if (photo.blurredUrl != null &&
+                                photo.blurredUrl!.isNotEmpty) {
+                              // Backend provided pre-blurred version
+                              imageUrl = photo.blurredUrl!;
+                            } else {
+                              // Fallback: use original with client-side blur
+                              imageUrl = photo.url;
+                              shouldApplyLocalBlur = true;
+                            }
+                          }
 
                           return Container(
                             margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -415,25 +437,42 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  CachedNetworkImage(
-                                    imageUrl: photo.url,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      color: Colors.grey[200],
-                                      child: const Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                          color: Colors.grey[200],
-                                          child: const Icon(
-                                            Icons.error,
-                                            color: Colors.grey,
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ImageViewer(
+                                            photos: photos,
+                                            initialIndex: index,
+                                            hasAccess: hasPhotoAccess,
+                                            canSetProfile: false,
+                                            canDelete: false,
                                           ),
                                         ),
+                                      );
+                                    },
+                                    child: CachedNetworkImage(
+                                      imageUrl: imageUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        color: Colors.grey[200],
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                            color: Colors.grey[200],
+                                            child: const Icon(
+                                              Icons.error,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                    ),
                                   ),
-                                  if (isRestricted)
+                                  // Apply blur overlay only if needed (fallback)
+                                  if (shouldApplyLocalBlur)
                                     BackdropFilter(
                                       filter: ImageFilter.blur(
                                         sigmaX: 15,

@@ -3,12 +3,14 @@ class Photo {
   final String? publicId;
   final bool isProfile;
   final bool restricted;
+  final String? blurredUrl;
 
   Photo({
     required this.url,
     this.publicId,
     this.isProfile = false,
     this.restricted = false,
+    this.blurredUrl,
   });
 
   factory Photo.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class Photo {
       publicId: json['publicId'] ?? json['id'],
       isProfile: json['isProfile'] ?? json['is_profile'] ?? false,
       restricted: json['restricted'] ?? false,
+      blurredUrl: json['blurredUrl'] ?? json['blurred_url'],
     );
   }
 
@@ -26,6 +29,7 @@ class Photo {
       'publicId': publicId,
       'isProfile': isProfile,
       'restricted': restricted,
+      'blurredUrl': blurredUrl,
     };
   }
 
@@ -34,12 +38,19 @@ class Photo {
     String? publicId,
     bool? isProfile,
     bool? restricted,
+    String? blurredUrl,
   }) {
     return Photo(
       url: url ?? this.url,
       publicId: publicId ?? this.publicId,
       isProfile: isProfile ?? this.isProfile,
       restricted: restricted ?? this.restricted,
+      blurredUrl: blurredUrl ?? this.blurredUrl,
     );
+  }
+
+  @override
+  String toString() {
+    return 'Photo(url: $url, isProfile: $isProfile, restricted: $restricted, blurredUrl: $blurredUrl)';
   }
 }
