@@ -48,7 +48,8 @@ void main() async {
         Provider<StorageService>.value(value: storageService),
         Provider<NavigationService>.value(value: navigationService),
         ChangeNotifierProvider(
-          create: (_) => AuthProvider(authRepository, navigationService),
+          create: (_) =>
+              AuthProvider(authRepository, navigationService, socketService),
         ),
         ChangeNotifierProvider(
           create: (_) => OnboardingProvider(onboardingProfileRepository),

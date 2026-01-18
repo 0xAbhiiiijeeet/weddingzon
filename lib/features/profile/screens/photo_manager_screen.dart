@@ -166,13 +166,19 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
         final user = context.read<AuthProvider>().currentUser;
         if (user == null) return;
 
-        final currentIndex = user.photos.indexWhere((p) => p.url == photo.url);
+        // Create unrestricted copies of photos for the viewer
+        final unrestrictedPhotos = user.photos
+            .map((p) => p.copyWith(restricted: false, isProfile: false))
+            .toList();
+        final currentIndex = unrestrictedPhotos.indexWhere(
+          (p) => p.url == photo.url,
+        );
 
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ImageViewer(
-              photos: user.photos,
+              photos: unrestrictedPhotos,
               initialIndex: currentIndex >= 0 ? currentIndex : 0,
               hasAccess: true, // User always has access to their own photos
               canSetProfile: true,
@@ -187,8 +193,8 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
                 final photoId = photo.publicId;
                 if (photoId != null) {
-                  await _setAsProfilePhoto(photoId);
-                  if (mounted) {
+                  final success = await _setAsProfilePhoto(photoId);
+                  if (success && mounted) {
                     Navigator.pop(context);
                   }
                 } else {
@@ -204,7 +210,10 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
                 final photoId = photo.publicId;
                 if (photoId != null) {
-                  await _deletePhoto(photoId, index);
+                  final success = await _deletePhoto(photoId, index);
+                  if (success && mounted) {
+                    Navigator.pop(context);
+                  }
                 } else {
                   debugPrint(
                     '[PHOTO_MANAGER] ERROR: publicId is null for photo at index $index',
@@ -298,14 +307,14 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     return {};
   }
 
-  Future<void> _deletePhoto(String photoId, int index) async {
+  Future<bool> _deletePhoto(String photoId, int index) async {
     debugPrint(
       '[PHOTO_MANAGER] Requesting delete for photo: $photoId at index $index',
     );
     final provider = context.read<ProfileProvider>();
     final success = await provider.deletePhoto(photoId);
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
     if (success) {
       debugPrint(
@@ -316,12 +325,14 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
         msg: 'Photo deleted',
         backgroundColor: Colors.green,
       );
+      return true;
     } else {
       debugPrint('[PHOTO_MANAGER] Failed to delete photo');
       Fluttertoast.showToast(
         msg: 'Failed to delete photo',
         backgroundColor: Colors.red,
       );
+      return false;
     }
   }
 
@@ -389,12 +400,12 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     }
   }
 
-  Future<void> _setAsProfilePhoto(String photoId) async {
+  Future<bool> _setAsProfilePhoto(String photoId) async {
     debugPrint('[PHOTO_MANAGER] Requesting set as profile for: $photoId');
     final provider = context.read<ProfileProvider>();
     final success = await provider.setProfilePhoto(photoId);
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
     if (success) {
       debugPrint('[PHOTO_MANAGER] Profile photo updated. Refreshing user...');
@@ -403,12 +414,14 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
         msg: 'Profile photo updated',
         backgroundColor: Colors.green,
       );
+      return true;
     } else {
       debugPrint('[PHOTO_MANAGER] Failed to update profile photo');
       Fluttertoast.showToast(
         msg: 'Failed to update profile photo',
         backgroundColor: Colors.red,
       );
+      return false;
     }
   }
 

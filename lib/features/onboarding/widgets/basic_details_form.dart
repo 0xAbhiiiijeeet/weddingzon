@@ -53,10 +53,12 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           // Username
           TextFormField(
             initialValue: provider.formData['username'],
+            readOnly: true,
+            enabled: false,
             decoration: const InputDecoration(
               labelText: 'Username *',
               border: OutlineInputBorder(),
-              hintText: 'Choose a unique username',
+              // hintText: 'Choose a unique username', // Removed as it's read-only
             ),
             validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
             onChanged: (v) => provider.updateField('username', v),

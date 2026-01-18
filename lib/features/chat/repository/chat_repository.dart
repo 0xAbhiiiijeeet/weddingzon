@@ -21,6 +21,7 @@ class ChatRepository {
     try {
       final response = await _apiService.dio.get(
         AppConstants.chatConversations,
+        queryParameters: {'full': true},
         options: Options(extra: {'withCredentials': true}),
       );
 
@@ -50,7 +51,7 @@ class ChatRepository {
     try {
       final response = await _apiService.dio.get(
         '${AppConstants.chatHistory}/$userId',
-        queryParameters: {'page': page, 'limit': limit},
+        queryParameters: {'page': page, 'limit': limit, 'full': true},
         options: Options(extra: {'withCredentials': true}),
       );
 

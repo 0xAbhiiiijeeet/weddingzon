@@ -134,6 +134,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             initialValue: provider.editFormData['username'],
             onSaved: (value) => provider.updateEditField('username', value),
             required: true,
+            enabled: false, // Username cannot be edited
           ),
           _buildTextField(
             label: 'First Name',
@@ -663,11 +664,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     TextInputType? keyboardType,
     int? maxLength,
     int? minLength,
+    bool enabled = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         initialValue: initialValue,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
@@ -801,8 +804,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     if (!mounted) return;
 
     if (response.success && response.data != null) {
-      // Update auth provider with new user data
-      context.read<AuthProvider>().updateUser(response.data!);
+      // Refresh user from server to ensure we get signed URLs and complete data
+      await context.read<AuthProvider>().refreshUser();
 
       Fluttertoast.showToast(
         msg: 'Profile updated successfully!',

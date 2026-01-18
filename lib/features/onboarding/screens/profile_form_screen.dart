@@ -65,6 +65,12 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
             currentUser.email,
           );
         }
+        if (currentUser.username != null) {
+          context.read<OnboardingProvider>().updateField(
+            'username',
+            currentUser.username,
+          );
+        }
       }
     });
   }
@@ -162,7 +168,10 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
             child: ElevatedButton(
               onPressed: provider.isLoading
                   ? null
-                  : () => _handleNext(provider),
+                  : () {
+                      debugPrint('[PROFILE_FORM] Next/Submit Button Tapped!');
+                      _handleNext(provider);
+                    },
               child: provider.isLoading
                   ? const SizedBox(
                       height: 20,
@@ -193,10 +202,19 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
     if (provider.currentStep == 7) {
       // Updated from 4 to 7
       // Submit profile
+      debugPrint('[PROFILE_FORM] Submitting profile...');
       final response = await provider.submitProfile();
+      debugPrint('[PROFILE_FORM] Submit response success: ${response.success}');
+      debugPrint('[PROFILE_FORM] Submit response data: ${response.data}');
+
       if (response.success && response.data != null) {
         // Update auth provider with new user data
-        if (!mounted) return;
+        if (!mounted) {
+          debugPrint('[PROFILE_FORM] Content not mounted after submit');
+          return;
+        }
+
+        debugPrint('[PROFILE_FORM] Updating global user data...');
         context.read<AuthProvider>().updateUser(response.data!);
 
         Fluttertoast.showToast(
@@ -205,12 +223,23 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         );
 
         if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.feed,
-          (route) => false,
+        if (!mounted) return;
+        debugPrint(
+          '[PROFILE_FORM] Navigating to Feed (Route: ${AppRoutes.feed})...',
         );
+        Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.feed,
+              (route) => false,
+            )
+            .then((_) {
+              debugPrint('[PROFILE_FORM] Navigation Future completed');
+            })
+            .catchError((e) {
+              debugPrint('[PROFILE_FORM] Navigation Error: $e');
+            });
       } else {
+        debugPrint('[PROFILE_FORM] Submit failed: ${response.message}');
         Fluttertoast.showToast(
           msg: response.message ?? "Failed to update profile",
           backgroundColor: Colors.red,

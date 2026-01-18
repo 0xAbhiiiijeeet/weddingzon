@@ -48,7 +48,8 @@ class SocketService {
             .enableReconnection()
             .setReconnectionAttempts(5)
             .setReconnectionDelay(1000)
-            .build(),
+            .build()
+          ..['forceNew'] = true,
       );
 
       _setupListeners();

@@ -206,7 +206,7 @@ class User {
       alternateMobile: json['alternate_mobile'],
       suitableTimeToCall: json['suitable_time_to_call'],
       aboutMe: json['about_me'],
-      profilePhoto: json['profilePhoto'],
+      profilePhoto: json['profile_photo'] ?? json['profilePhoto'],
       photos:
           (json['photos'] as List?)?.map((p) => Photo.fromJson(p)).toList() ??
           [],
@@ -271,6 +271,8 @@ class User {
       'alternate_mobile': alternateMobile,
       'suitable_time_to_call': suitableTimeToCall,
       'about_me': aboutMe,
+      'profile_photo': profilePhoto,
+      'photos': photos.map((p) => p.toJson()).toList(),
     };
   }
 

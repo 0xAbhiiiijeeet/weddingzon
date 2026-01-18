@@ -101,14 +101,22 @@ class MessageBubble extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        debugPrint('[CHAT_IMAGE] Tapped image message');
+        debugPrint('[CHAT_IMAGE] URL: $imageUrl');
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ImageViewer(
               photos: [
-                Photo(url: imageUrl, isProfile: false, restricted: false),
+                Photo(
+                  url: imageUrl,
+                  isProfile: false,
+                  restricted: false, // Explicitly unrestricted
+                ),
               ],
               hasAccess: true,
+              initialIndex: 0,
             ),
           ),
         );

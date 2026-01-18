@@ -74,6 +74,18 @@ class ChatProvider extends ChangeNotifier {
 
   /// Set the current logged-in user ID - call this after auth
   void setCurrentUserId(String userId) {
+    if (_myUserId != userId) {
+      debugPrint(
+        '[CHAT] User changed from $_myUserId to $userId - Clearing state',
+      );
+      _conversations = [];
+      _messages = [];
+      _currentChat = null;
+      _currentChatUserId = null;
+      _typingUsers.clear();
+      _isTyping = false;
+      _typingTimer?.cancel();
+    }
     _myUserId = userId;
     debugPrint('[CHAT] Current user ID set to: $userId');
   }
@@ -311,9 +323,38 @@ class ChatProvider extends ChangeNotifier {
   void _handleIncomingMessage(Message message) {
     debugPrint('[CHAT] Incoming message from ${message.senderId}');
 
+    // If message is from ME, check if we have an optimistic copy to update
+    if (message.senderId == _myUserId) {
+      final index = _messages.lastIndexWhere(
+        (m) =>
+            m.id == null && // Optimistic messages have no ID
+            m.message == message.message &&
+            m.type == message.type &&
+            m.createdAt.difference(message.createdAt).inSeconds.abs() < 5,
+      ); // Within 5 seconds
+
+      if (index != -1) {
+        debugPrint(
+          '[CHAT] Deduplicated own message. Updating ID: ${message.id}',
+        );
+        _messages[index] = message; // Replace optimistic with real
+        notifyListeners();
+        _updateConversationWithMessage(message);
+        return;
+      }
+    }
+
     // Add to messages if in current chat
     if (_currentChatUserId == message.senderId ||
         _currentChatUserId == message.receiverId) {
+      // Double check it's not already in the list by ID (if it came twice from socket)
+      if (message.id != null && _messages.any((m) => m.id == message.id)) {
+        debugPrint(
+          '[CHAT] Duplicate message ID ${message.id} received, ignoring',
+        );
+        return;
+      }
+
       _messages.add(message);
 
       // Mark as read if current chat

@@ -173,6 +173,7 @@ class AuthRepository {
 
       final response = await _apiService.dio.get(
         AppConstants.authMe,
+        queryParameters: {'full': true},
         options: Options(extra: {'withCredentials': true}),
       );
 

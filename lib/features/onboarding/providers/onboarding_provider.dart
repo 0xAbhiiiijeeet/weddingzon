@@ -47,6 +47,7 @@ class OnboardingProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    debugPrint('[ONBOARDING] Submitting form data: $_formData');
     final response = await _profileRepository.registerDetails(_formData);
 
     _isLoading = false;
