@@ -38,11 +38,12 @@ class ApiService {
   }
 
   /// Get cookies as a string for socket authentication
-  Future<String> getCookieString() async {
+  Future<String> getCookieString([String? url]) async {
     if (_cookieJar == null) return '';
 
     try {
-      final uri = Uri.parse(AppConstants.baseUrl);
+      final targetUrl = url ?? AppConstants.baseUrl;
+      final uri = Uri.parse(targetUrl);
       final cookies = await _cookieJar!.loadForRequest(uri);
 
       if (cookies.isEmpty) {
@@ -60,6 +61,46 @@ class ApiService {
     } catch (e) {
       debugPrint('[API] Error getting cookies: $e');
       return '';
+    }
+  }
+
+  /// Extract the access_token from cookies for Socket.IO authentication
+  /// Returns the JWT token value or null if not found
+  Future<String?> getAccessTokenFromCookies() async {
+    if (_cookieJar == null) {
+      debugPrint('[API] Cookie jar not initialized');
+      return null;
+    }
+
+    try {
+      // Use socket URL to ensure we get cookies for the correct domain
+      final uri = Uri.parse(AppConstants.socketUrl);
+      final cookies = await _cookieJar!.loadForRequest(uri);
+
+      if (cookies.isEmpty) {
+        debugPrint('[API] No cookies found for token extraction');
+        return null;
+      }
+
+      // Find the access_token cookie
+      final accessTokenCookie = cookies.firstWhere(
+        (cookie) => cookie.name == 'access_token',
+        orElse: () => Cookie('', ''),
+      );
+
+      if (accessTokenCookie.value.isEmpty) {
+        debugPrint('[API] access_token cookie not found');
+        return null;
+      }
+
+      debugPrint('[API] Access token extracted successfully');
+      debugPrint(
+        '[API] Token preview: ${accessTokenCookie.value.substring(0, 20)}...',
+      );
+      return accessTokenCookie.value;
+    } catch (e) {
+      debugPrint('[API] Error extracting access token: $e');
+      return null;
     }
   }
 

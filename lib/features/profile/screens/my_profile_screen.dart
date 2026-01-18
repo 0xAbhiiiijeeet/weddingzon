@@ -5,8 +5,22 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/models/user_model.dart';
 
-class MyProfileScreen extends StatelessWidget {
+class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
+
+  @override
+  State<MyProfileScreen> createState() => _MyProfileScreenState();
+}
+
+class _MyProfileScreenState extends State<MyProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch fresh user details (including fresh signed URLs) when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().refreshUser();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +46,7 @@ class MyProfileScreen extends StatelessWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              await authProvider.checkAuthStatus();
+              await authProvider.refreshUser();
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),

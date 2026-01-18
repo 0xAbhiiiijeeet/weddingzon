@@ -5,6 +5,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:provider/provider.dart';
 import '../models/feed_user.dart';
 import '../providers/connection_provider.dart';
+import '../../../shared/widgets/image_viewer.dart';
 
 class ProfileCard extends StatefulWidget {
   final FeedUser user;
@@ -188,31 +189,79 @@ class _ProfileCardState extends State<ProfileCard> {
         final photoStatus = connectionProvider.getStatus(widget.user.username);
         final hasPhotoAccess =
             photoStatus == 'granted' || photoStatus == 'accepted';
-        final isRestricted = photo.restricted && !hasPhotoAccess;
         final isRequesting = connectionProvider.isRequesting(
           widget.user.username,
         );
+
+        String imageUrl;
+        bool shouldApplyLocalBlur = false;
+        bool shouldShowLockOverlay = false;
+
+        if (photo.isProfile) {
+          // Profile photos are ALWAYS visible
+          imageUrl = photo.url;
+        } else if (hasPhotoAccess) {
+          // User has permission - show original
+          imageUrl = photo.url;
+        } else {
+          // User DOESN'T have permission - blur non-profile photos
+          shouldShowLockOverlay = true;
+
+          if (photo.blurredUrl != null && photo.blurredUrl!.isNotEmpty) {
+            // Backend provided pre-blurred version
+            imageUrl = photo.blurredUrl!;
+          } else {
+            // Fallback: use original with client-side blur
+            imageUrl = photo.url;
+            shouldApplyLocalBlur = true;
+          }
+        }
 
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: photo.url,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey[300],
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.person, size: 64, color: Colors.grey),
+              InkWell(
+                onTap: () {
+                  // Find current photo index
+                  int currentIndex = widget.user.photos.indexWhere(
+                    (p) => p.url == photo.url,
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ImageViewer(
+                        photos: widget.user.photos,
+                        initialIndex: currentIndex >= 0 ? currentIndex : 0,
+                        hasAccess: hasPhotoAccess,
+                        canSetProfile: false,
+                        canDelete: false,
+                      ),
+                    ),
+                  );
+                },
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: Colors.grey[300],
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey[300],
+                    child: const Icon(
+                      Icons.person,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
               ),
 
-              // Blur effect for restricted photos without access
-              if (isRestricted)
+              // Apply client-side blur if needed (fallback)
+              if (shouldApplyLocalBlur)
                 BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                   child: Container(
@@ -223,8 +272,8 @@ class _ProfileCardState extends State<ProfileCard> {
                   ),
                 ),
 
-              // Request Access Button - only show for restricted photos without access
-              if (isRestricted)
+              // Request Access Button - only show for non-profile photos without access
+              if (shouldShowLockOverlay)
                 Positioned(
                   bottom: 16,
                   left: 0,

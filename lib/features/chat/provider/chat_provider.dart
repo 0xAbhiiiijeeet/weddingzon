@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../../../core/models/conversation_model.dart';
 import '../../../core/models/message_model.dart';
 import '../../../core/services/socket_service.dart';
+import '../../auth/repositories/auth_repository.dart';
 import '../repository/chat_repository.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatRepository _chatRepository;
   final SocketService _socketService;
+  final AuthRepository _authRepository; // Add dependency
 
   // State
   List<Conversation> _conversations = [];
@@ -22,7 +24,11 @@ class ChatProvider extends ChangeNotifier {
   Timer? _typingTimer;
   bool _isTyping = false;
 
-  ChatProvider(this._chatRepository, this._socketService) {
+  ChatProvider(
+    this._chatRepository,
+    this._socketService,
+    this._authRepository,
+  ) {
     _setupSocketListeners();
   }
 
@@ -41,10 +47,45 @@ class ChatProvider extends ChangeNotifier {
     _socketService.onMessageReceived = _handleIncomingMessage;
     _socketService.onUserTyping = _handleUserTyping;
     _socketService.onUserStoppedTyping = _handleUserStoppedTyping;
+    _socketService.onUnauthorized =
+        _handleSocketUnauthorized; // Register listener
+  }
+
+  Future<void> _handleSocketUnauthorized() async {
+    debugPrint('[CHAT] Socket unauthorized! Attempting token refresh...');
+
+    // 1. Disconnect current socket
+    disconnectSocket();
+
+    // 2. Refresh token (AuthRepository handles concurrency)
+    final newToken = await _authRepository.refreshToken();
+
+    if (newToken != null && newToken.isNotEmpty) {
+      debugPrint('[CHAT] Token refreshed, reconnecting socket...');
+      // 3. Reconnect with new token
+      connectSocket(newToken);
+    } else {
+      debugPrint(
+        '[CHAT] Failed to refresh token, socket remains disconnected.',
+      );
+      // Optionally notify user or logout if critical
+    }
   }
 
   /// Set the current logged-in user ID - call this after auth
   void setCurrentUserId(String userId) {
+    if (_myUserId != userId) {
+      debugPrint(
+        '[CHAT] User changed from $_myUserId to $userId - Clearing state',
+      );
+      _conversations = [];
+      _messages = [];
+      _currentChat = null;
+      _currentChatUserId = null;
+      _typingUsers.clear();
+      _isTyping = false;
+      _typingTimer?.cancel();
+    }
     _myUserId = userId;
     debugPrint('[CHAT] Current user ID set to: $userId');
   }
@@ -170,12 +211,20 @@ class ChatProvider extends ChangeNotifier {
     String? mediaUrl,
   }) {
     debugPrint(
-      '[CHAT] sendMessage called: receiverId=$receiverId, message=$message',
+      '[CHAT] sendMessage called: receiverId=$receiverId, message="$message", type=${type.value}, mediaUrl=$mediaUrl',
     );
 
-    if (message.trim().isEmpty) {
-      debugPrint('[CHAT] Message is empty, ignoring');
-      return;
+    // Validation based on message type
+    if (type == MessageType.text) {
+      if (message.trim().isEmpty) {
+        debugPrint('[CHAT] Text message is empty, ignoring');
+        return;
+      }
+    } else if (type == MessageType.image) {
+      if (mediaUrl == null || mediaUrl.isEmpty) {
+        debugPrint('[CHAT] Image message missing mediaUrl, ignoring');
+        return;
+      }
     }
 
     // Add to local state immediately (optimistic update)
@@ -197,19 +246,18 @@ class ChatProvider extends ChangeNotifier {
 
     // Send via socket if connected
     if (_socketService.isConnected) {
-      debugPrint('[CHAT] Socket connected, sending message...');
+      debugPrint('[CHAT] Socket connected, sending message via socket...');
       _socketService.sendMessage(
         receiverId: receiverId,
         message: message,
         type: type,
         mediaUrl: mediaUrl,
       );
+      debugPrint('[CHAT] Message sent via socket');
     } else {
       debugPrint(
         '[CHAT] WARNING: Socket not connected! Message added locally but NOT sent to server.',
       );
-      // Message is already added locally, user will see it
-      // When socket reconnects, they'd need to resend
     }
 
     // Stop typing indicator
@@ -220,32 +268,93 @@ class ChatProvider extends ChangeNotifier {
     _isSending = true;
     notifyListeners();
 
-    final response = await _chatRepository.uploadChatImage(file);
+    try {
+      debugPrint('[CHAT] Starting image upload...');
+      final response = await _chatRepository.uploadChatImage(file);
 
-    if (response.success && response.data != null) {
-      // For images, send the URL as mediaUrl (not as message content)
-      sendMessage(
-        receiverId,
-        '', // Empty message content for images
-        type: MessageType.image,
-        mediaUrl: response.data,
-      );
+      if (response.success && response.data != null) {
+        debugPrint('[CHAT] Image uploaded successfully: ${response.data}');
+
+        // Don't call sendMessage, handle it directly here
+        final newMessage = Message(
+          senderId: _myUserId ?? 'unknown',
+          receiverId: receiverId,
+          message: '', // Empty for images
+          type: MessageType.image,
+          mediaUrl: response.data,
+          createdAt: DateTime.now(),
+        );
+
+        // Add to local state
+        _messages.add(newMessage);
+        _updateConversationWithMessage(newMessage);
+
+        // Send via socket
+        if (_socketService.isConnected) {
+          debugPrint('[CHAT] Sending image message via socket...');
+          _socketService.sendMessage(
+            receiverId: receiverId,
+            message: '', // Empty message for images
+            type: MessageType.image,
+            mediaUrl: response.data,
+          );
+          debugPrint('[CHAT] Image message sent via socket');
+        } else {
+          debugPrint('[CHAT] WARNING: Socket not connected!');
+        }
+
+        _isSending = false;
+        notifyListeners();
+        return true;
+      } else {
+        debugPrint('[CHAT] Image upload failed: ${response.message}');
+        _isSending = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[CHAT] Error sending image: $e');
       _isSending = false;
       notifyListeners();
-      return true;
+      return false;
     }
-
-    _isSending = false;
-    notifyListeners();
-    return false;
   }
 
   void _handleIncomingMessage(Message message) {
     debugPrint('[CHAT] Incoming message from ${message.senderId}');
 
+    // If message is from ME, check if we have an optimistic copy to update
+    if (message.senderId == _myUserId) {
+      final index = _messages.lastIndexWhere(
+        (m) =>
+            m.id == null && // Optimistic messages have no ID
+            m.message == message.message &&
+            m.type == message.type &&
+            m.createdAt.difference(message.createdAt).inSeconds.abs() < 5,
+      ); // Within 5 seconds
+
+      if (index != -1) {
+        debugPrint(
+          '[CHAT] Deduplicated own message. Updating ID: ${message.id}',
+        );
+        _messages[index] = message; // Replace optimistic with real
+        notifyListeners();
+        _updateConversationWithMessage(message);
+        return;
+      }
+    }
+
     // Add to messages if in current chat
     if (_currentChatUserId == message.senderId ||
         _currentChatUserId == message.receiverId) {
+      // Double check it's not already in the list by ID (if it came twice from socket)
+      if (message.id != null && _messages.any((m) => m.id == message.id)) {
+        debugPrint(
+          '[CHAT] Duplicate message ID ${message.id} received, ignoring',
+        );
+        return;
+      }
+
       _messages.add(message);
 
       // Mark as read if current chat

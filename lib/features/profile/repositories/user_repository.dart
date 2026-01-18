@@ -81,19 +81,38 @@ class UserRepository {
 
   /// Delete a photo
   /// DELETE /users/photos/:photoId
-  Future<ApiResponse<void>> deletePhoto(String photoId) async {
+  Future<ApiResponse<List<Photo>>> deletePhoto(String photoId) async {
     try {
-      final response = await _apiService.dio.delete('/users/photos/$photoId');
+      debugPrint('[USER_REPO] Deleting photo: $photoId');
+      final response = await _apiService.dio.delete(
+        '${AppConstants.usersPhotos}/$photoId',
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      debugPrint('[USER_REPO] Delete response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return ApiResponse(success: true, message: response.data['message']);
+        final data = response.data['data'] as List<dynamic>?;
+        final photos =
+            data
+                ?.map((p) => Photo.fromJson(p as Map<String, dynamic>))
+                .toList() ??
+            [];
+
+        return ApiResponse(
+          success: true,
+          data: photos,
+          message: response.data['message'],
+        );
       }
 
+      debugPrint('[USER_REPO] Delete failed: ${response.data}');
       return ApiResponse(
         success: false,
         message: response.data['message'] ?? 'Delete failed',
       );
     } on DioException catch (e) {
+      debugPrint('[USER_REPO] Delete error: ${e.message}');
       return ApiResponse(
         success: false,
         message: e.response?.data['message'] ?? e.message ?? 'Network error',
@@ -101,34 +120,40 @@ class UserRepository {
     }
   }
 
-  /// Update photo properties (if backend supports)
-  /// This is a placeholder - API contract doesn't show this endpoint
-  Future<ApiResponse<Photo>> updatePhoto(
-    String photoId, {
-    bool? isProfile,
-    bool? restricted,
-  }) async {
+  /// Set a photo as profile
+  /// PATCH /users/photos/:photoId/set-profile
+  Future<ApiResponse<List<Photo>>> setAsProfilePhoto(String photoId) async {
     try {
+      debugPrint('[USER_REPO] Setting profile photo: $photoId');
       final response = await _apiService.dio.patch(
-        '/users/photos/$photoId',
-        data: {
-          if (isProfile != null) 'isProfile': isProfile,
-          if (restricted != null) 'restricted': restricted,
-        },
+        '${AppConstants.usersPhotos}/$photoId/set-profile',
+        options: Options(extra: {'withCredentials': true}),
       );
 
+      debugPrint('[USER_REPO] Set profile response: ${response.statusCode}');
+
       if (response.statusCode == 200 && response.data != null) {
+        final data = response.data['data'] as List<dynamic>?;
+        final photos =
+            data
+                ?.map((p) => Photo.fromJson(p as Map<String, dynamic>))
+                .toList() ??
+            [];
+
         return ApiResponse(
           success: true,
-          data: Photo.fromJson(response.data['data']),
+          data: photos,
+          message: response.data['message'],
         );
       }
 
+      debugPrint('[USER_REPO] Set profile failed: ${response.data}');
       return ApiResponse(
         success: false,
-        message: response.data['message'] ?? 'Update failed',
+        message: response.data['message'] ?? 'Failed to set profile photo',
       );
     } on DioException catch (e) {
+      debugPrint('[USER_REPO] Set profile error: ${e.message}');
       return ApiResponse(
         success: false,
         message: e.response?.data['message'] ?? e.message ?? 'Network error',
@@ -143,6 +168,7 @@ class UserRepository {
 
       final response = await _apiService.dio.get(
         AppConstants.authMe,
+        queryParameters: {'full': true},
         options: Options(extra: {'withCredentials': true}),
       );
 

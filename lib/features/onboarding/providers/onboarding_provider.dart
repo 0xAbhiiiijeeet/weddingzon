@@ -24,7 +24,8 @@ class OnboardingProvider extends ChangeNotifier {
   }
 
   void nextStep() {
-    if (_currentStep < 4) {
+    if (_currentStep < 7) {
+      // Updated from 4 to 7 to support 8 steps
       _currentStep++;
       notifyListeners();
     }
@@ -46,6 +47,7 @@ class OnboardingProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    debugPrint('[ONBOARDING] Submitting form data: $_formData');
     final response = await _profileRepository.registerDetails(_formData);
 
     _isLoading = false;

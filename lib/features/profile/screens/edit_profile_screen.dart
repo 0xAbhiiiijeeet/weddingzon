@@ -15,16 +15,20 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
         context.read<ProfileProvider>().initializeEditForm(user);
+        setState(() {
+          _isInitialized = true;
+        });
       }
     });
   }
@@ -37,6 +41,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Profile'), centerTitle: true),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
@@ -49,7 +60,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             Tab(text: 'Location'),
             Tab(text: 'Family'),
             Tab(text: 'Education'),
+            Tab(text: 'Religious'),
             Tab(text: 'Lifestyle'),
+            Tab(text: 'Property'),
+            Tab(text: 'Contact'),
           ],
         ),
       ),
@@ -64,7 +78,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 _buildLocationTab(provider),
                 _buildFamilyTab(provider),
                 _buildEducationTab(provider),
+                _buildReligiousTab(provider),
                 _buildLifestyleTab(provider),
+                _buildPropertyTab(provider),
+                _buildContactTab(provider),
               ],
             ),
           );
@@ -97,6 +114,28 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildDropdown(
+            label: 'Profile Created For',
+            value: provider.editFormData['created_for'],
+            items: const [
+              'Self',
+              'Son',
+              'Daughter',
+              'Brother',
+              'Sister',
+              'Friend',
+              'Relative',
+            ],
+            onChanged: (value) =>
+                provider.updateEditField('created_for', value),
+          ),
+          _buildTextField(
+            label: 'Username',
+            initialValue: provider.editFormData['username'],
+            onSaved: (value) => provider.updateEditField('username', value),
+            required: true,
+            enabled: false, // Username cannot be edited
+          ),
           _buildTextField(
             label: 'First Name',
             initialValue: provider.editFormData['first_name'],
@@ -109,10 +148,21 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             onSaved: (value) => provider.updateEditField('last_name', value),
             required: true,
           ),
+          _buildDatePicker(
+            label: 'Date of Birth',
+            value: provider.editFormData['dob'],
+            onChanged: (value) => provider.updateEditField('dob', value),
+          ),
+          _buildDropdown(
+            label: 'Gender',
+            value: provider.editFormData['gender'],
+            items: const ['Male', 'Female', 'Other'],
+            onChanged: (value) => provider.updateEditField('gender', value),
+          ),
           _buildDropdown(
             label: 'Height',
             value: provider.editFormData['height'],
-            items: [
+            items: const [
               '4\'6"',
               '4\'8"',
               '4\'10"',
@@ -131,14 +181,19 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Marital Status',
             value: provider.editFormData['marital_status'],
-            items: ['Never Married', 'Divorced', 'Widowed', 'Awaiting Divorce'],
+            items: const [
+              'Never Married',
+              'Divorced',
+              'Widowed',
+              'Awaiting Divorce',
+            ],
             onChanged: (value) =>
                 provider.updateEditField('marital_status', value),
           ),
           _buildDropdown(
             label: 'Mother Tongue',
             value: provider.editFormData['mother_tongue'],
-            items: [
+            items: const [
               'Hindi',
               'English',
               'Marathi',
@@ -154,9 +209,33 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 provider.updateEditField('mother_tongue', value),
           ),
           _buildDropdown(
+            label: 'Disability Status',
+            value: provider.editFormData['disability'],
+            items: const ['None', 'Physical', 'Mental', 'Other'],
+            onChanged: (value) => provider.updateEditField('disability', value),
+          ),
+          // Conditional disability description
+          if (provider.editFormData['disability'] != null &&
+              provider.editFormData['disability'] != 'None')
+            _buildTextField(
+              label: 'Disability Description',
+              initialValue: provider.editFormData['disability_description'],
+              onSaved: (value) =>
+                  provider.updateEditField('disability_description', value),
+              maxLines: 2,
+            ),
+          _buildTextField(
+            label: 'Aadhar Number (Optional)',
+            initialValue: provider.editFormData['aadhar_number'],
+            onSaved: (value) =>
+                provider.updateEditField('aadhar_number', value),
+            keyboardType: TextInputType.number,
+            maxLength: 12,
+          ),
+          _buildDropdown(
             label: 'Blood Group',
             value: provider.editFormData['blood_group'],
-            items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+            items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
             onChanged: (value) =>
                 provider.updateEditField('blood_group', value),
           ),
@@ -165,6 +244,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             initialValue: provider.editFormData['about_me'],
             onSaved: (value) => provider.updateEditField('about_me', value),
             maxLines: 4,
+            minLength: 50,
           ),
         ],
       ),
@@ -172,6 +252,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   Widget _buildLocationTab(ProfileProvider provider) {
+    final isIndia = provider.editFormData['country'] == 'India';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -179,14 +261,54 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Country',
             value: provider.editFormData['country'],
-            items: ['India', 'USA', 'UK', 'Canada', 'Australia'],
+            items: const ['India', 'USA', 'UK', 'Canada', 'Australia'],
             onChanged: (value) => provider.updateEditField('country', value),
           ),
-          _buildTextField(
-            label: 'State',
-            initialValue: provider.editFormData['state'],
-            onSaved: (value) => provider.updateEditField('state', value),
-          ),
+          if (isIndia)
+            _buildDropdown(
+              label: 'State',
+              value: provider.editFormData['state'],
+              items: const [
+                'Andhra Pradesh',
+                'Arunachal Pradesh',
+                'Assam',
+                'Bihar',
+                'Chhattisgarh',
+                'Goa',
+                'Gujarat',
+                'Haryana',
+                'Himachal Pradesh',
+                'Jharkhand',
+                'Karnataka',
+                'Kerala',
+                'Madhya Pradesh',
+                'Maharashtra',
+                'Manipur',
+                'Meghalaya',
+                'Mizoram',
+                'Nagaland',
+                'Odisha',
+                'Punjab',
+                'Rajasthan',
+                'Sikkim',
+                'Tamil Nadu',
+                'Telangana',
+                'Tripura',
+                'Uttar Pradesh',
+                'Uttarakhand',
+                'West Bengal',
+                'Delhi',
+                'Jammu and Kashmir',
+                'Ladakh',
+              ],
+              onChanged: (value) => provider.updateEditField('state', value),
+            )
+          else
+            _buildTextField(
+              label: 'State',
+              initialValue: provider.editFormData['state'],
+              onSaved: (value) => provider.updateEditField('state', value),
+            ),
           _buildTextField(
             label: 'City',
             initialValue: provider.editFormData['city'],
@@ -203,16 +325,16 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       child: Column(
         children: [
           _buildDropdown(
-            label: 'Father Status',
+            label: "Father's Occupation/Status",
             value: provider.editFormData['father_status'],
-            items: ['Employed', 'Business', 'Retired', 'Passed Away'],
+            items: const ['Employed', 'Business', 'Retired', 'Passed Away'],
             onChanged: (value) =>
                 provider.updateEditField('father_status', value),
           ),
           _buildDropdown(
-            label: 'Mother Status',
+            label: "Mother's Occupation/Status",
             value: provider.editFormData['mother_status'],
-            items: [
+            items: const [
               'Homemaker',
               'Employed',
               'Business',
@@ -239,23 +361,42 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Family Status',
             value: provider.editFormData['family_status'],
-            items: ['Middle Class', 'Upper Middle Class', 'Rich', 'Affluent'],
+            items: const [
+              'Middle Class',
+              'Upper Middle Class',
+              'Rich',
+              'Affluent',
+            ],
             onChanged: (value) =>
                 provider.updateEditField('family_status', value),
           ),
           _buildDropdown(
             label: 'Family Type',
             value: provider.editFormData['family_type'],
-            items: ['Nuclear', 'Joint'],
+            items: const ['Nuclear', 'Joint'],
             onChanged: (value) =>
                 provider.updateEditField('family_type', value),
           ),
           _buildDropdown(
             label: 'Family Values',
             value: provider.editFormData['family_values'],
-            items: ['Traditional', 'Moderate', 'Liberal'],
+            items: const ['Traditional', 'Moderate', 'Liberal'],
             onChanged: (value) =>
                 provider.updateEditField('family_values', value),
+          ),
+          _buildDropdown(
+            label: 'Family Annual Income',
+            value: provider.editFormData['annual_income'],
+            items: const [
+              'Below 5 LPA',
+              '5-10 LPA',
+              '10-15 LPA',
+              '15-20 LPA',
+              '20-30 LPA',
+              'Above 30 LPA',
+            ],
+            onChanged: (value) =>
+                provider.updateEditField('annual_income', value),
           ),
           _buildTextField(
             label: 'Family Location',
@@ -276,7 +417,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Highest Education',
             value: provider.editFormData['highest_education'],
-            items: [
+            items: const [
               'High School',
               'Diploma',
               'Bachelor\'s',
@@ -301,7 +442,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Employed In',
             value: provider.editFormData['employed_in'],
-            items: [
+            items: const [
               'Private',
               'Government',
               'Business',
@@ -314,7 +455,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Personal Income',
             value: provider.editFormData['personal_income'],
-            items: [
+            items: const [
               'Below 5 LPA',
               '5-10 LPA',
               '10-15 LPA',
@@ -342,7 +483,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
   }
 
-  Widget _buildLifestyleTab(ProfileProvider provider) {
+  Widget _buildReligiousTab(ProfileProvider provider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -350,7 +491,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           _buildDropdown(
             label: 'Religion',
             value: provider.editFormData['religion'],
-            items: [
+            items: const [
               'Hindu',
               'Muslim',
               'Christian',
@@ -362,30 +503,152 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             onChanged: (value) => provider.updateEditField('religion', value),
           ),
           _buildTextField(
-            label: 'Community',
+            label: 'Community / Caste',
             initialValue: provider.editFormData['community'],
             onSaved: (value) => provider.updateEditField('community', value),
+          ),
+          _buildTextField(
+            label: 'Sub-Community (Optional)',
+            initialValue: provider.editFormData['sub_community'],
+            onSaved: (value) =>
+                provider.updateEditField('sub_community', value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLifestyleTab(ProfileProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _buildDropdown(
+            label: 'Appearance',
+            value: provider.editFormData['appearance'],
+            items: const ['Fair', 'Wheatish', 'Dark', 'Very Fair'],
+            onChanged: (value) => provider.updateEditField('appearance', value),
+          ),
+          _buildDropdown(
+            label: 'Living Status',
+            value: provider.editFormData['living_status'],
+            items: const [
+              'With Family',
+              'Alone',
+              'With Relatives',
+              'Hostel/PG',
+            ],
+            onChanged: (value) =>
+                provider.updateEditField('living_status', value),
           ),
           _buildDropdown(
             label: 'Eating Habits',
             value: provider.editFormData['eating_habits'],
-            items: ['Vegetarian', 'Non-Vegetarian', 'Eggetarian', 'Vegan'],
+            items: const [
+              'Vegetarian',
+              'Non-Vegetarian',
+              'Eggetarian',
+              'Vegan',
+            ],
             onChanged: (value) =>
                 provider.updateEditField('eating_habits', value),
           ),
           _buildDropdown(
             label: 'Smoking Habits',
             value: provider.editFormData['smoking_habits'],
-            items: ['No', 'Occasionally', 'Yes'],
+            items: const ['No', 'Occasionally', 'Yes'],
             onChanged: (value) =>
                 provider.updateEditField('smoking_habits', value),
           ),
           _buildDropdown(
             label: 'Drinking Habits',
             value: provider.editFormData['drinking_habits'],
-            items: ['No', 'Socially', 'Yes'],
+            items: const ['No', 'Socially', 'Yes'],
             onChanged: (value) =>
                 provider.updateEditField('drinking_habits', value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropertyTab(ProfileProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _buildTextField(
+            label: 'Land Area (in Acres, Optional)',
+            initialValue: provider.editFormData['land_area']?.toString(),
+            onSaved: (value) => provider.updateEditField(
+              'land_area',
+              value != null && value.isNotEmpty ? double.tryParse(value) : null,
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          _buildTextField(
+            label: 'Property Type (Optional)',
+            initialValue: provider.editFormData['property_type'],
+            onSaved: (value) =>
+                provider.updateEditField('property_type', value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactTab(ProfileProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Read-only phone (from auth)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: TextFormField(
+              initialValue: provider.editFormData['phone'] ?? '',
+              decoration: const InputDecoration(
+                labelText: 'Phone Number (Verified)',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.verified, color: Colors.green),
+              ),
+              readOnly: true,
+              enabled: false,
+            ),
+          ),
+          // Read-only email (from auth)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: TextFormField(
+              initialValue: provider.editFormData['email'] ?? '',
+              decoration: const InputDecoration(
+                labelText: 'Email (Verified)',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.verified, color: Colors.green),
+              ),
+              readOnly: true,
+              enabled: false,
+            ),
+          ),
+          _buildTextField(
+            label: 'Alternate Mobile Number (Optional)',
+            initialValue: provider.editFormData['alternate_mobile'],
+            onSaved: (value) =>
+                provider.updateEditField('alternate_mobile', value),
+            keyboardType: TextInputType.phone,
+            maxLength: 10,
+          ),
+          _buildDropdown(
+            label: 'Suitable Time to Call',
+            value: provider.editFormData['suitable_time_to_call'],
+            items: const [
+              'Morning (6 AM - 12 PM)',
+              'Afternoon (12 PM - 6 PM)',
+              'Evening (6 PM - 10 PM)',
+              'Anytime',
+            ],
+            onChanged: (value) =>
+                provider.updateEditField('suitable_time_to_call', value),
           ),
         ],
       ),
@@ -398,19 +661,32 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     required Function(String?) onSaved,
     bool required = false,
     int maxLines = 1,
+    TextInputType? keyboardType,
+    int? maxLength,
+    int? minLength,
+    bool enabled = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         initialValue: initialValue,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
         ),
         maxLines: maxLines,
-        validator: required
-            ? (value) => value?.isEmpty ?? true ? 'Required' : null
-            : null,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
+        validator: (value) {
+          if (required && (value?.isEmpty ?? true)) {
+            return 'Required';
+          }
+          if (minLength != null && (value?.length ?? 0) < minLength) {
+            return 'Minimum $minLength characters required';
+          }
+          return null;
+        },
         onSaved: onSaved,
         onChanged: onSaved,
       ),
@@ -462,6 +738,56 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
   }
 
+  Widget _buildDatePicker({
+    required String label,
+    String? value,
+    required Function(String?) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          suffixIcon: const Icon(Icons.calendar_today),
+        ),
+        controller: TextEditingController(
+          text: value != null && value.isNotEmpty
+              ? value.split('T')[0] // Display only date part
+              : '',
+        ),
+        onTap: () async {
+          final DateTime? picked = await showDatePicker(
+            context: context,
+            initialDate: value != null && value.isNotEmpty
+                ? DateTime.tryParse(value) ?? DateTime(2000)
+                : DateTime(2000),
+            firstDate: DateTime(1950),
+            lastDate: DateTime.now().subtract(const Duration(days: 18 * 365)),
+            helpText: 'Select Date of Birth',
+          );
+          if (picked != null) {
+            onChanged(picked.toIso8601String());
+          }
+        },
+        validator: (val) {
+          if (value == null || value.isEmpty) {
+            return 'Date of Birth is required';
+          }
+          final dob = DateTime.tryParse(value);
+          if (dob == null) return 'Invalid date';
+
+          final age = DateTime.now().difference(dob).inDays ~/ 365;
+          if (age < 18) {
+            return 'Must be at least 18 years old';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
   Future<void> _saveProfile(ProfileProvider provider) async {
     if (!_formKey.currentState!.validate()) {
       Fluttertoast.showToast(
@@ -478,8 +804,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     if (!mounted) return;
 
     if (response.success && response.data != null) {
-      // Update auth provider with new user data
-      context.read<AuthProvider>().updateUser(response.data!);
+      // Refresh user from server to ensure we get signed URLs and complete data
+      await context.read<AuthProvider>().refreshUser();
 
       Fluttertoast.showToast(
         msg: 'Profile updated successfully!',

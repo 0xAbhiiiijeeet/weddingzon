@@ -8,7 +8,10 @@ import '../widgets/basic_details_form.dart';
 import '../widgets/location_form.dart';
 import '../widgets/family_background_form.dart';
 import '../widgets/education_career_form.dart';
+import '../widgets/religious_background_form.dart';
 import '../widgets/lifestyle_form.dart';
+import '../widgets/property_assets_form.dart';
+import '../widgets/contact_details_form.dart';
 
 class ProfileFormScreen extends StatefulWidget {
   const ProfileFormScreen({super.key});
@@ -20,7 +23,7 @@ class ProfileFormScreen extends StatefulWidget {
 class _ProfileFormScreenState extends State<ProfileFormScreen> {
   final PageController _pageController = PageController();
   final List<GlobalKey<FormState>> _formKeys = List.generate(
-    5,
+    8, // Updated from 5 to 8
     (_) => GlobalKey<FormState>(),
   );
 
@@ -44,6 +47,30 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
       } else if (args is String) {
         // Legacy format: just role string
         context.read<OnboardingProvider>().updateField('role', args);
+      }
+
+      // Initialize phone and email from auth
+      final authProvider = context.read<AuthProvider>();
+      final currentUser = authProvider.currentUser;
+      if (currentUser != null) {
+        if (currentUser.phone != null) {
+          context.read<OnboardingProvider>().updateField(
+            'phone',
+            currentUser.phone,
+          );
+        }
+        if (currentUser.email != null) {
+          context.read<OnboardingProvider>().updateField(
+            'email',
+            currentUser.email,
+          );
+        }
+        if (currentUser.username != null) {
+          context.read<OnboardingProvider>().updateField(
+            'username',
+            currentUser.username,
+          );
+        }
       }
     });
   }
@@ -70,7 +97,10 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
                     LocationForm(formKey: _formKeys[1]),
                     FamilyBackgroundForm(formKey: _formKeys[2]),
                     EducationCareerForm(formKey: _formKeys[3]),
-                    LifestyleForm(formKey: _formKeys[4]),
+                    ReligiousBackgroundForm(formKey: _formKeys[4]),
+                    LifestyleForm(formKey: _formKeys[5]),
+                    PropertyAssetsForm(formKey: _formKeys[6]),
+                    ContactDetailsForm(formKey: _formKeys[7]),
                   ],
                 ),
               ),
@@ -87,7 +117,8 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(5, (index) {
+        children: List.generate(8, (index) {
+          // Updated from 5 to 8
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             width: index == currentStep ? 32 : 8,
@@ -137,14 +168,19 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
             child: ElevatedButton(
               onPressed: provider.isLoading
                   ? null
-                  : () => _handleNext(provider),
+                  : () {
+                      debugPrint('[PROFILE_FORM] Next/Submit Button Tapped!');
+                      _handleNext(provider);
+                    },
               child: provider.isLoading
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(provider.currentStep == 4 ? 'Submit' : 'Next'),
+                  : Text(
+                      provider.currentStep == 7 ? 'Submit' : 'Next',
+                    ), // Updated from 4 to 7
             ),
           ),
         ],
@@ -163,12 +199,22 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
 
     _formKeys[provider.currentStep].currentState!.save();
 
-    if (provider.currentStep == 4) {
+    if (provider.currentStep == 7) {
+      // Updated from 4 to 7
       // Submit profile
+      debugPrint('[PROFILE_FORM] Submitting profile...');
       final response = await provider.submitProfile();
+      debugPrint('[PROFILE_FORM] Submit response success: ${response.success}');
+      debugPrint('[PROFILE_FORM] Submit response data: ${response.data}');
+
       if (response.success && response.data != null) {
         // Update auth provider with new user data
-        if (!mounted) return;
+        if (!mounted) {
+          debugPrint('[PROFILE_FORM] Content not mounted after submit');
+          return;
+        }
+
+        debugPrint('[PROFILE_FORM] Updating global user data...');
         context.read<AuthProvider>().updateUser(response.data!);
 
         Fluttertoast.showToast(
@@ -177,12 +223,23 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         );
 
         if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.feed,
-          (route) => false,
+        if (!mounted) return;
+        debugPrint(
+          '[PROFILE_FORM] Navigating to Feed (Route: ${AppRoutes.feed})...',
         );
+        Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.feed,
+              (route) => false,
+            )
+            .then((_) {
+              debugPrint('[PROFILE_FORM] Navigation Future completed');
+            })
+            .catchError((e) {
+              debugPrint('[PROFILE_FORM] Navigation Error: $e');
+            });
       } else {
+        debugPrint('[PROFILE_FORM] Submit failed: ${response.message}');
         Fluttertoast.showToast(
           msg: response.message ?? "Failed to update profile",
           backgroundColor: Colors.red,

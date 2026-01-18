@@ -173,6 +173,7 @@ class AuthRepository {
 
       final response = await _apiService.dio.get(
         AppConstants.authMe,
+        queryParameters: {'full': true},
         options: Options(extra: {'withCredentials': true}),
       );
 
@@ -396,5 +397,66 @@ class AuthRepository {
       success: true,
       data: User.fromJson(Map<String, dynamic>.from(userData)),
     );
+  }
+
+  // =====================================================
+  // TOKEN REFRESH (With Concurrency Control)
+  // =====================================================
+
+  Future<String?>? _refreshTokenFuture;
+
+  Future<String?> refreshToken() async {
+    // If a refresh is already in progress, return the existing future
+    if (_refreshTokenFuture != null) {
+      debugPrint('[AUTH] Refresh already in progress, joining wait...');
+      return _refreshTokenFuture;
+    }
+
+    // Otherwise, start a new refresh request
+    _refreshTokenFuture = _performTokenRefresh();
+    final result = await _refreshTokenFuture;
+    _refreshTokenFuture = null; // Reset after completion
+    return result;
+  }
+
+  Future<String?> _performTokenRefresh() async {
+    try {
+      debugPrint('[AUTH] ========== REFRESHING TOKEN ==========');
+
+      // Get existing refresh token if needed, or rely on cookies
+      // Note: backend likely uses cookies for refresh token, but we check both
+
+      final response = await _apiService.dio.post(
+        AppConstants.refreshToken,
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      debugPrint('[AUTH] Refresh status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data != null && data['success'] == true) {
+          final newAccessToken =
+              data['accessToken'] ?? data['access_token'] ?? data['token'];
+
+          if (newAccessToken != null) {
+            debugPrint('[AUTH] Token refreshed successfully');
+            // Save new tokens
+            await _storageService.saveTokens(
+              accessToken: newAccessToken.toString(),
+              refreshToken:
+                  '', // usually refresh token rotates too, but if cookie-based, might be auto-handled
+            );
+            return newAccessToken.toString();
+          }
+        }
+      }
+
+      debugPrint('[AUTH] Refresh failed or no token in response');
+      return null;
+    } catch (e) {
+      debugPrint('[AUTH] Token refresh failed: $e');
+      return null;
+    }
   }
 }

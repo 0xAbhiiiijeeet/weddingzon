@@ -62,8 +62,9 @@ class ConnectionProvider extends ChangeNotifier {
 
     _requestingPhotoAccess.remove(username);
 
-    if (response.success && response.data != null) {
-      _photoAccessStatuses[username] = response.data!;
+    if (response.success) {
+      _photoAccessStatuses[username] = 'pending';
+      debugPrint('[CONNECTION] Photo status set to: pending');
       Fluttertoast.showToast(
         msg: response.message ?? "Request sent successfully",
         backgroundColor: Colors.green,
@@ -186,6 +187,7 @@ class ConnectionProvider extends ChangeNotifier {
 
     if (response.success) {
       _photoAccessStatuses[username] = 'none';
+      debugPrint('[CONNECTION] Photo status set to: none (cancelled)');
       Fluttertoast.showToast(
         msg: "Photo access request cancelled",
         backgroundColor: Colors.green,
@@ -218,6 +220,7 @@ class ConnectionProvider extends ChangeNotifier {
 
     if (response.success) {
       _detailsStatuses[username] = 'none';
+      debugPrint('[CONNECTION] Details status set to: none (cancelled)');
       Fluttertoast.showToast(
         msg: "Details access request cancelled",
         backgroundColor: Colors.green,

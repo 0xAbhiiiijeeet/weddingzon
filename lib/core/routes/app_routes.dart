@@ -32,6 +32,9 @@ class AppRoutes {
   static const String roleSelection = '/onboarding/role';
   static const String profileForm = '/onboarding/profile';
   static const String feed = '/feed';
+  static const String explore = '/explore';
+  static const String chatTab = '/chat-tab';
+  static const String profileTab = '/profile-tab';
   static const String editProfile = '/profile/edit';
   static const String photoManager = '/profile/photos';
   static const String userProfile = '/profile/user';
@@ -56,7 +59,10 @@ class AppRoutes {
     },
     roleSelection: (_) => const RoleSelectionScreen(),
     profileForm: (_) => const ProfileFormScreen(),
-    feed: (_) => const MainShellScreen(),
+    feed: (_) => const MainShellScreen(initialIndex: 0),
+    explore: (_) => const MainShellScreen(initialIndex: 1),
+    chatTab: (_) => const MainShellScreen(initialIndex: 2),
+    profileTab: (_) => const MainShellScreen(initialIndex: 3),
     editProfile: (_) => const EditProfileScreen(),
     photoManager: (_) => const PhotoManagerScreen(),
     userProfile: (context) {

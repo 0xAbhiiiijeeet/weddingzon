@@ -8,18 +8,22 @@ import '../../profile/screens/my_profile_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../chat/provider/chat_provider.dart';
 import '../../../core/services/api_service.dart';
-import '../../../core/services/storage_service.dart';
+
+import '../../../core/constants/app_constants.dart';
 
 class MainShellScreen extends StatefulWidget {
-  const MainShellScreen({super.key});
+  final int initialIndex;
+
+  const MainShellScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
 }
 
-class _MainShellScreenState extends State<MainShellScreen> {
-  int _currentIndex = 0;
-  final PageController _pageController = PageController();
+class _MainShellScreenState extends State<MainShellScreen>
+    with AutomaticKeepAliveClientMixin {
+  late int _currentIndex;
+  late PageController _pageController;
   DateTime? _lastBackPressTime;
 
   final List<Widget> _screens = [
@@ -30,8 +34,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
   ];
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+
     // Connect socket for chat after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
@@ -42,29 +52,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final authProvider = context.read<AuthProvider>();
     final chatProvider = context.read<ChatProvider>();
     final apiService = context.read<ApiService>();
-    final storageService = context.read<StorageService>();
 
     final currentUser = authProvider.currentUser;
     if (currentUser != null) {
       debugPrint('[SHELL] Initializing chat for user: ${currentUser.id}');
       chatProvider.setCurrentUserId(currentUser.id);
 
-      // Try to get JWT token first (preferred for sockets)
-      String? token = await storageService.getAccessToken();
+      // Extract the real JWT token from cookies
+      final accessToken = await apiService.getAccessTokenFromCookies();
 
-      if (token != null && token.isNotEmpty) {
-        debugPrint('[SHELL] Using cached JWT for socket auth');
-        chatProvider.connectSocket(token);
+      if (accessToken != null && accessToken.isNotEmpty) {
+        debugPrint('[SHELL] Using real JWT token for socket authentication');
+        debugPrint('[SHELL] Token preview: ${accessToken.substring(0, 20)}...');
+
+        // Connect with the real JWT token
+        chatProvider.connectSocket(accessToken);
       } else {
-        // Fallback: use cookies
-        debugPrint('[SHELL] No JWT found, using cookie-based auth');
-        final cookieString = await apiService.getCookieString();
+        // Fallback: Try cookie-based auth (though backend requires token)
+        debugPrint(
+          '[SHELL] WARNING: Could not extract access_token from cookies',
+        );
+        debugPrint('[SHELL] Attempting fallback with cookie string...');
+
+        final cookieString = await apiService.getCookieString(
+          AppConstants.socketUrl,
+        );
 
         if (cookieString.isEmpty) {
-          debugPrint('[SHELL] WARNING: No auth credentials for socket');
+          debugPrint(
+            '[SHELL] CRITICAL: No auth credentials available for socket',
+          );
         }
 
-        chatProvider.connectSocket(currentUser.id, cookieString: cookieString);
+        // Use fallback (likely to fail based on API requirements)
+        chatProvider.connectSocket('cookie-auth', cookieString: cookieString);
       }
     }
   }
@@ -103,6 +124,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {

@@ -80,15 +80,25 @@ class _MessageInputState extends State<MessageInput> {
 
     if (source == null) return;
 
-    final XFile? image = await _picker.pickImage(
-      source: source,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
 
-    if (image != null) {
-      widget.onSendImage(File(image.path));
+      if (image != null && mounted) {
+        debugPrint('[MESSAGE_INPUT] Image picked: ${image.path}');
+        widget.onSendImage(File(image.path));
+      }
+    } catch (e) {
+      debugPrint('[MESSAGE_INPUT] Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+      }
     }
   }
 

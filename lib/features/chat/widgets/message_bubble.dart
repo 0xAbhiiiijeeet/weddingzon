@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/models/message_model.dart';
+import '../../../core/models/photo_model.dart';
+import '../../../shared/widgets/image_viewer.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -60,7 +62,7 @@ class MessageBubble extends StatelessWidget {
                 bottomRight: Radius.circular(isMe ? 4 : 16),
               ),
               child: message.type == MessageType.image
-                  ? _buildImageMessage()
+                  ? _buildImageMessage(context)
                   : _buildTextMessage(theme),
             ),
           ),
@@ -93,35 +95,58 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildImageMessage() {
+  Widget _buildImageMessage(BuildContext context) {
     // Use mediaUrl for images (new API structure), fallback to message for backward compatibility
     final imageUrl = message.mediaUrl ?? message.message;
 
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      width: 220,
-      height: 220,
-      placeholder: (context, url) => Container(
-        width: 220,
-        height: 220,
-        color: Colors.grey[300],
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
-      errorWidget: (context, url, error) => Container(
-        width: 220,
-        height: 220,
-        color: Colors.grey[300],
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.broken_image, size: 48, color: Colors.grey),
-            const SizedBox(height: 8),
-            Text(
-              'Failed to load image',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+    return GestureDetector(
+      onTap: () {
+        debugPrint('[CHAT_IMAGE] Tapped image message');
+        debugPrint('[CHAT_IMAGE] URL: $imageUrl');
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ImageViewer(
+              photos: [
+                Photo(
+                  url: imageUrl,
+                  isProfile: false,
+                  restricted: false, // Explicitly unrestricted
+                ),
+              ],
+              hasAccess: true,
+              initialIndex: 0,
             ),
-          ],
+          ),
+        );
+      },
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        width: 220,
+        height: 220,
+        placeholder: (context, url) => Container(
+          width: 220,
+          height: 220,
+          color: Colors.grey[300],
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+        errorWidget: (context, url, error) => Container(
+          width: 220,
+          height: 220,
+          color: Colors.grey[300],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+              const SizedBox(height: 8),
+              Text(
+                'Failed to load image',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );

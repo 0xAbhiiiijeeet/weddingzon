@@ -11,8 +11,8 @@ class FeedRepository {
   Future<ApiResponse<FeedResponse>> getFeed({String? cursor}) async {
     try {
       final queryParams = cursor != null
-          ? {'cursor': cursor}
-          : <String, dynamic>{};
+          ? {'cursor': cursor, 'full': true}
+          : <String, dynamic>{'full': true};
 
       final response = await _apiService.dio.get(
         '/users/feed',

@@ -6,16 +6,19 @@ import '../../../core/services/user_storage_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../repositories/auth_repository.dart';
 
+import '../../../core/services/socket_service.dart';
+
 class AuthProvider with ChangeNotifier {
   final AuthRepository _authRepository;
   final NavigationService _navService;
+  final SocketService _socketService;
 
   User? _currentUser;
   bool _isLoading = false;
   bool _isCheckingAuth = false;
   bool isSignupFlow = false;
 
-  AuthProvider(this._authRepository, this._navService);
+  AuthProvider(this._authRepository, this._navService, this._socketService);
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -54,7 +57,7 @@ class AuthProvider with ChangeNotifier {
         debugPrint('[AUTH] User verified by server');
         debugPrint('[AUTH] User: ${_currentUser?.email}');
         debugPrint(
-          '[AUTH] Profile Complete: ${_currentUser?.isProfileComplete}',
+          '[AUTH] PROFILE COMPLETE: ${_currentUser?.isProfileComplete}',
         );
         _routeUserForLogin(_currentUser!);
       } else {
@@ -295,6 +298,10 @@ class AuthProvider with ChangeNotifier {
     debugPrint('[AUTH] ========== LOGOUT ==========');
 
     try {
+      // Disconnect socket BEFORE clearing user data
+      _socketService.disconnect();
+      debugPrint('[AUTH] Socket disconnected');
+
       await _authRepository.logout();
       await UserStorageService.clearUser();
       _currentUser = null;
@@ -312,6 +319,25 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('[AUTH] Logout error: $e');
       Fluttertoast.showToast(msg: 'Logout failed', backgroundColor: Colors.red);
+    }
+  }
+
+  /// Refreshes the current user data from the server without triggering navigation
+  Future<void> refreshUser() async {
+    debugPrint('[AUTH] ========== REFRESH USER (NO NAV) ==========');
+    try {
+      final response = await _authRepository.getCurrentUser();
+
+      if (response.success && response.data != null) {
+        _currentUser = response.data;
+        await _saveUserLocally(_currentUser!);
+        notifyListeners();
+        debugPrint('[AUTH] User refreshed successfully');
+      } else {
+        debugPrint('[AUTH] Refresh failed: ${response.message}');
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Refresh error: $e');
     }
   }
 }

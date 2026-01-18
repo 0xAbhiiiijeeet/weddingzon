@@ -14,7 +14,7 @@ class ExploreRepository {
       debugPrint('[EXPLORE_REPO] ========== GET FEED ==========');
       debugPrint('[EXPLORE_REPO] Cursor: $cursor');
 
-      final queryParams = <String, dynamic>{'limit': 20};
+      final queryParams = <String, dynamic>{'limit': 20, 'full': true};
       if (cursor != null) queryParams['cursor'] = cursor;
 
       final response = await _apiService.dio.get(
@@ -54,7 +54,7 @@ class ExploreRepository {
 
       final response = await _apiService.dio.get(
         AppConstants.usersSearch,
-        queryParameters: {'q': query, 'page': page, 'limit': 20},
+        queryParameters: {'q': query, 'page': page, 'limit': 20, 'full': true},
         options: Options(extra: {'withCredentials': true}),
       );
 
@@ -84,7 +84,7 @@ class ExploreRepository {
       debugPrint('[EXPLORE_REPO] Filters: $filters');
       debugPrint('[EXPLORE_REPO] Page: $page');
 
-      final queryParams = {'page': page, 'limit': 20, ...filters};
+      final queryParams = {'page': page, 'limit': 20, 'full': true, ...filters};
 
       final response = await _apiService.dio.get(
         AppConstants.usersSearch,
