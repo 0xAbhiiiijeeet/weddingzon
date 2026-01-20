@@ -43,6 +43,18 @@ class EducationCareerForm extends StatelessWidget {
           const SizedBox(height: 16),
 
           TextFormField(
+            initialValue: provider.formData['educational_details'],
+            decoration: const InputDecoration(
+              labelText: 'Educational Details',
+              border: OutlineInputBorder(),
+              hintText: 'e.g. B.Tech in CS',
+            ),
+            onChanged: (v) => provider.updateField('educational_details', v),
+            onSaved: (v) => provider.updateField('educational_details', v),
+          ),
+          const SizedBox(height: 16),
+
+          TextFormField(
             initialValue: provider.formData['occupation'],
             decoration: const InputDecoration(
               labelText: 'Occupation *',
@@ -50,14 +62,34 @@ class EducationCareerForm extends StatelessWidget {
               hintText: 'Software Engineer, Doctor, etc.',
             ),
             validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+            onChanged: (v) => provider.updateField('occupation', v),
             onSaved: (v) => provider.updateField('occupation', v),
+          ),
+          const SizedBox(height: 16),
+
+          DropdownButtonFormField<String>(
+            initialValue: provider.formData['employed_in'],
+            decoration: const InputDecoration(
+              labelText: 'Employed In*',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'Private',
+              'Government',
+              'Business',
+              'Self Employed',
+              'Not Working',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
+            onChanged: (v) => provider.updateField('employed_in', v),
+            onSaved: (v) => provider.updateField('employed_in', v),
           ),
           const SizedBox(height: 16),
 
           DropdownButtonFormField<String>(
             initialValue: provider.formData['personal_income'],
             decoration: const InputDecoration(
-              labelText: 'Annual Income',
+              labelText: 'Annual Income*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -68,18 +100,21 @@ class EducationCareerForm extends StatelessWidget {
               '50 Lakhs - 1 Crore',
               'Above 1 Crore',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('personal_income', v),
             onSaved: (v) => provider.updateField('personal_income', v),
           ),
           const SizedBox(height: 16),
 
           TextFormField(
-            initialValue: provider.formData['working_location'],
+            initialValue: provider.formData['working_sector'],
             decoration: const InputDecoration(
-              labelText: 'Working City',
+              labelText: 'Working Sector (Optional)',
               border: OutlineInputBorder(),
+              hintText: 'e.g. IT, Healthcare',
             ),
-            onSaved: (v) => provider.updateField('working_location', v),
+            onChanged: (v) => provider.updateField('working_sector', v),
+            onSaved: (v) => provider.updateField('working_sector', v),
           ),
         ],
       ),

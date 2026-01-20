@@ -25,7 +25,7 @@ class LifestyleForm extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: provider.formData['appearance'],
             decoration: const InputDecoration(
-              labelText: 'Appearance',
+              labelText: 'Appearance*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -34,6 +34,7 @@ class LifestyleForm extends StatelessWidget {
               'Dark',
               'Very Fair',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('appearance', v),
             onSaved: (v) => provider.updateField('appearance', v),
           ),
@@ -42,7 +43,7 @@ class LifestyleForm extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: provider.formData['living_status'],
             decoration: const InputDecoration(
-              labelText: 'Living Status',
+              labelText: 'Living Status*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -51,6 +52,7 @@ class LifestyleForm extends StatelessWidget {
               'With Relatives',
               'Hostel/PG',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('living_status', v),
             onSaved: (v) => provider.updateField('living_status', v),
           ),
@@ -59,7 +61,7 @@ class LifestyleForm extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: provider.formData['eating_habits'],
             decoration: const InputDecoration(
-              labelText: 'Eating Habits',
+              labelText: 'Eating Habits*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -68,6 +70,7 @@ class LifestyleForm extends StatelessWidget {
               'Eggetarian',
               'Vegan',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('eating_habits', v),
             onSaved: (v) => provider.updateField('eating_habits', v),
           ),

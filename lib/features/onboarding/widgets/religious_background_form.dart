@@ -46,9 +46,10 @@ class ReligiousBackgroundForm extends StatelessWidget {
           TextFormField(
             initialValue: provider.formData['community'],
             decoration: const InputDecoration(
-              labelText: 'Community / Caste',
+              labelText: 'Community / Caste*',
               border: OutlineInputBorder(),
             ),
+            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
             onChanged: (v) => provider.updateField('community', v),
             onSaved: (v) => provider.updateField('community', v),
           ),

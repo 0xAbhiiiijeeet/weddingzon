@@ -25,7 +25,13 @@ class FeedRepository {
           data: FeedResponse.fromJson(response.data),
         );
       }
-      return ApiResponse(success: false, message: 'Failed to load feed');
+
+      String errorMessage = 'Failed to load feed';
+      if (response.data is Map<String, dynamic>) {
+        errorMessage = response.data['message'] ?? errorMessage;
+      }
+
+      return ApiResponse(success: false, message: errorMessage);
     } on DioException catch (e) {
       return ApiResponse(
         success: false,

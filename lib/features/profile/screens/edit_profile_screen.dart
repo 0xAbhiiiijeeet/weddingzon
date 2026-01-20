@@ -115,7 +115,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDropdown(
-            label: 'Profile Created For',
+            label: 'Profile Created For*',
             value: provider.editFormData['created_for'],
             items: const [
               'Self',
@@ -128,12 +128,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('created_for', value),
+            required: true,
           ),
           _buildTextField(
-            label: 'Username',
+            label: 'Username*',
             initialValue: provider.editFormData['username'],
             onSaved: (value) => provider.updateEditField('username', value),
-            required: true,
+            helperText: 'Unique ID for your profile URL (Cannot be changed)',
             enabled: false, // Username cannot be edited
           ),
           _buildTextField(
@@ -153,14 +154,30 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             value: provider.editFormData['dob'],
             onChanged: (value) => provider.updateEditField('dob', value),
           ),
+          // Age (Read-only)
+          _buildTextField(
+            label: 'Age',
+            initialValue: provider.editFormData['dob'] != null
+                ? (DateTime.now()
+                              .difference(
+                                DateTime.parse(provider.editFormData['dob']),
+                              )
+                              .inDays ~/
+                          365)
+                      .toString()
+                : '',
+            onSaved: (_) {},
+            enabled: false,
+          ),
           _buildDropdown(
-            label: 'Gender',
+            label: 'Gender*',
             value: provider.editFormData['gender'],
             items: const ['Male', 'Female', 'Other'],
             onChanged: (value) => provider.updateEditField('gender', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Height',
+            label: 'Height*',
             value: provider.editFormData['height'],
             items: const [
               '4\'6"',
@@ -177,9 +194,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               '6\'4"',
             ],
             onChanged: (value) => provider.updateEditField('height', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Marital Status',
+            label: 'Marital Status*',
             value: provider.editFormData['marital_status'],
             items: const [
               'Never Married',
@@ -189,9 +207,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('marital_status', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Mother Tongue',
+            label: 'Mother Tongue*',
             value: provider.editFormData['mother_tongue'],
             items: const [
               'Hindi',
@@ -207,6 +226,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('mother_tongue', value),
+            required: true,
           ),
           _buildDropdown(
             label: 'Disability Status',
@@ -231,6 +251,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 provider.updateEditField('aadhar_number', value),
             keyboardType: TextInputType.number,
             maxLength: 12,
+            helperText: 'Verification ensures a trusted profile',
           ),
           _buildDropdown(
             label: 'Blood Group',
@@ -325,14 +346,15 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       child: Column(
         children: [
           _buildDropdown(
-            label: "Father's Occupation/Status",
+            label: "Father's Occupation/Status*",
             value: provider.editFormData['father_status'],
             items: const ['Employed', 'Business', 'Retired', 'Passed Away'],
             onChanged: (value) =>
                 provider.updateEditField('father_status', value),
+            required: true,
           ),
           _buildDropdown(
-            label: "Mother's Occupation/Status",
+            label: "Mother's Occupation/Status*",
             value: provider.editFormData['mother_status'],
             items: const [
               'Homemaker',
@@ -343,6 +365,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('mother_status', value),
+            required: true,
           ),
           _buildNumberField(
             label: 'Brothers',
@@ -359,7 +382,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 provider.updateEditField('sisters', int.tryParse(value ?? '0')),
           ),
           _buildDropdown(
-            label: 'Family Status',
+            label: 'Family Status*',
             value: provider.editFormData['family_status'],
             items: const [
               'Middle Class',
@@ -369,20 +392,23 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('family_status', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Family Type',
+            label: 'Family Type*',
             value: provider.editFormData['family_type'],
             items: const ['Nuclear', 'Joint'],
             onChanged: (value) =>
                 provider.updateEditField('family_type', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Family Values',
+            label: 'Family Values*',
             value: provider.editFormData['family_values'],
             items: const ['Traditional', 'Moderate', 'Liberal'],
             onChanged: (value) =>
                 provider.updateEditField('family_values', value),
+            required: true,
           ),
           _buildDropdown(
             label: 'Family Annual Income',
@@ -415,32 +441,37 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       child: Column(
         children: [
           _buildDropdown(
-            label: 'Highest Education',
+            label: 'Highest Education*',
             value: provider.editFormData['highest_education'],
             items: const [
               'High School',
               'Diploma',
-              'Bachelor\'s',
-              'Master\'s',
+              "Bachelor's Degree",
+              "Master's Degree",
               'PhD',
+              'Professional Degree',
               'Other',
             ],
             onChanged: (value) =>
                 provider.updateEditField('highest_education', value),
+            required: true,
           ),
           _buildTextField(
             label: 'Educational Details',
             initialValue: provider.editFormData['educational_details'],
             onSaved: (value) =>
                 provider.updateEditField('educational_details', value),
+            hintText: 'e.g. B.Tech in CS',
           ),
           _buildTextField(
-            label: 'Occupation',
+            label: 'Occupation*',
             initialValue: provider.editFormData['occupation'],
             onSaved: (value) => provider.updateEditField('occupation', value),
+            required: true,
+            hintText: 'Software Engineer, Doctor, etc.',
           ),
           _buildDropdown(
-            label: 'Employed In',
+            label: 'Employed In*',
             value: provider.editFormData['employed_in'],
             items: const [
               'Private',
@@ -451,9 +482,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('employed_in', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Personal Income',
+            label: 'Annual Income*',
             value: provider.editFormData['personal_income'],
             items: const [
               'Below 5 LPA',
@@ -465,12 +497,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('personal_income', value),
+            required: true,
           ),
           _buildTextField(
-            label: 'Working Sector',
+            label: 'Working Sector (Optional)',
             initialValue: provider.editFormData['working_sector'],
             onSaved: (value) =>
                 provider.updateEditField('working_sector', value),
+            hintText: 'e.g. IT, Healthcare',
           ),
           _buildTextField(
             label: 'Working Location',
@@ -489,7 +523,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       child: Column(
         children: [
           _buildDropdown(
-            label: 'Religion',
+            label: 'Religion*',
             value: provider.editFormData['religion'],
             items: const [
               'Hindu',
@@ -501,11 +535,13 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               'Other',
             ],
             onChanged: (value) => provider.updateEditField('religion', value),
+            required: true,
           ),
           _buildTextField(
-            label: 'Community / Caste',
+            label: 'Community / Caste*',
             initialValue: provider.editFormData['community'],
             onSaved: (value) => provider.updateEditField('community', value),
+            required: true,
           ),
           _buildTextField(
             label: 'Sub-Community (Optional)',
@@ -524,13 +560,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       child: Column(
         children: [
           _buildDropdown(
-            label: 'Appearance',
+            label: 'Appearance*',
             value: provider.editFormData['appearance'],
             items: const ['Fair', 'Wheatish', 'Dark', 'Very Fair'],
             onChanged: (value) => provider.updateEditField('appearance', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Living Status',
+            label: 'Living Status*',
             value: provider.editFormData['living_status'],
             items: const [
               'With Family',
@@ -540,9 +577,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('living_status', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Eating Habits',
+            label: 'Eating Habits*',
             value: provider.editFormData['eating_habits'],
             items: const [
               'Vegetarian',
@@ -552,16 +590,17 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ],
             onChanged: (value) =>
                 provider.updateEditField('eating_habits', value),
+            required: true,
           ),
           _buildDropdown(
-            label: 'Smoking Habits',
+            label: 'Smoking',
             value: provider.editFormData['smoking_habits'],
             items: const ['No', 'Occasionally', 'Yes'],
             onChanged: (value) =>
                 provider.updateEditField('smoking_habits', value),
           ),
           _buildDropdown(
-            label: 'Drinking Habits',
+            label: 'Drinking',
             value: provider.editFormData['drinking_habits'],
             items: const ['No', 'Socially', 'Yes'],
             onChanged: (value) =>
@@ -665,6 +704,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     int? maxLength,
     int? minLength,
     bool enabled = true,
+    String? helperText,
+    String? hintText,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -674,6 +715,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
+          helperText: helperText,
+          hintText: hintText,
         ),
         maxLines: maxLines,
         keyboardType: keyboardType,
@@ -718,6 +761,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     String? value,
     required List<String> items,
     required Function(String?) onChanged,
+    bool required = false,
   }) {
     // Ensure value is in items list, otherwise set to null
     final validValue = (value != null && items.contains(value)) ? value : null;
@@ -734,6 +778,12 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           return DropdownMenuItem(value: item, child: Text(item));
         }).toList(),
         onChanged: onChanged,
+        validator: (val) {
+          if (required && val == null) {
+            return 'Required';
+          }
+          return null;
+        },
       ),
     );
   }

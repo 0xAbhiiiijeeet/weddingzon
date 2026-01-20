@@ -29,11 +29,11 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 24),
 
-          // Profile Created For
+          // Profile Created For*
           DropdownButtonFormField<String>(
-            initialValue: provider.formData['created_for'],
+            value: provider.formData['created_for'],
             decoration: const InputDecoration(
-              labelText: 'Profile Created For',
+              labelText: 'Profile Created For*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -45,6 +45,7 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
               'Friend',
               'Relative',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('created_for', v),
             onSaved: (v) => provider.updateField('created_for', v),
           ),
@@ -56,11 +57,10 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
             readOnly: true,
             enabled: false,
             decoration: const InputDecoration(
-              labelText: 'Username *',
+              labelText: 'Username*',
               border: OutlineInputBorder(),
-              // hintText: 'Choose a unique username', // Removed as it's read-only
+              helperText: 'Unique ID for your profile URL (Cannot be changed)',
             ),
-            validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
             onChanged: (v) => provider.updateField('username', v),
             onSaved: (v) => provider.updateField('username', v),
           ),
@@ -131,6 +131,28 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
+          // Age (Read-only, calculated from DOB)
+          TextFormField(
+            readOnly: true,
+            enabled: false,
+            decoration: const InputDecoration(
+              labelText: 'Age',
+              border: OutlineInputBorder(),
+            ),
+            controller: TextEditingController(
+              text: provider.formData['dob'] != null
+                  ? (DateTime.now()
+                                .difference(
+                                  DateTime.parse(provider.formData['dob']),
+                                )
+                                .inDays ~/
+                            365)
+                        .toString()
+                  : '',
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Gender
           DropdownButtonFormField<String>(
             initialValue: provider.formData['gender'],
@@ -153,7 +175,7 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           DropdownButtonFormField<String>(
             initialValue: provider.formData['height'],
             decoration: const InputDecoration(
-              labelText: 'Height',
+              labelText: 'Height*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -170,6 +192,7 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
               '6\'2"',
               '6\'4"',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('height', v),
             onSaved: (v) => provider.updateField('height', v),
           ),
@@ -198,7 +221,7 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           DropdownButtonFormField<String>(
             initialValue: provider.formData['mother_tongue'],
             decoration: const InputDecoration(
-              labelText: 'Mother Tongue',
+              labelText: 'Mother Tongue*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -213,6 +236,7 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
               'Malayalam',
               'Punjabi',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('mother_tongue', v),
             onSaved: (v) => provider.updateField('mother_tongue', v),
           ),
@@ -264,6 +288,7 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
               labelText: 'Aadhar Number (Optional)',
               border: OutlineInputBorder(),
               hintText: '12-digit number',
+              helperText: 'Verification ensures a trusted profile',
             ),
             keyboardType: TextInputType.number,
             maxLength: 12,

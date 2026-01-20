@@ -1,9 +1,29 @@
 {
-    "installed": {
-        "client_id": "294108253572-90qnhimcjf8nugpdfqn3m0f1m9ni8q2p.apps.googleusercontent.com",
-        "project_id": "hoocup",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
-    }
+    "project_info": {
+        "project_number": "970173889610",
+        "project_id": "weddingzone-6036e",
+        "storage_bucket": "weddingzone-6036e.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:970173889610:android:21c23d83841535560d7ab3",
+                "android_client_info": {
+                    "package_name": "com.example.weddingzon"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyD6uOTm4O-zWEZTxCizSX4LGBNQvTjT6nM"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
 }

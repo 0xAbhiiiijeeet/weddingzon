@@ -7,6 +7,7 @@ import '../../chat/screens/conversations_screen.dart';
 import '../../profile/screens/my_profile_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../chat/provider/chat_provider.dart';
+import '../../map/screens/map_screen.dart';
 import '../../../core/services/api_service.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -29,6 +30,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   final List<Widget> _screens = [
     const FeedScreen(),
     const ExploreScreen(),
+    const MapScreen(), // New Map Tab
     const ConversationsScreen(),
     const MyProfileScreen(),
   ];
@@ -160,6 +162,11 @@ class _MainShellScreenState extends State<MainShellScreen>
               icon: Icon(Icons.explore_outlined),
               activeIcon: Icon(Icons.explore),
               label: 'Explore',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map_outlined),
+              activeIcon: Icon(Icons.map),
+              label: 'Map',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline),
