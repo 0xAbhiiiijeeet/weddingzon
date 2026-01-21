@@ -28,6 +28,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/notification_storage_service.dart';
 import 'features/notifications/repositories/notification_repository.dart';
+import 'features/shell/providers/badge_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -100,6 +101,14 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => MapProvider(mapRepository)),
         Provider<SocketService>.value(value: socketService),
+        ChangeNotifierProvider(
+          create: (context) => BadgeProvider(
+            context.read<ChatProvider>(),
+            context.read<ConnectionsProvider>(),
+            context.read<NotificationsProvider>(),
+            socketService,
+          ),
+        ),
       ],
       child: const WeddingZonApp(),
     ),
@@ -123,7 +132,7 @@ class WeddingZonApp extends StatelessWidget {
           context,
           listen: false,
         ).navigatorKey,
-        initialRoute: AppRoutes.landing,
+        initialRoute: AppRoutes.splash,
         routes: AppRoutes.routes,
       ),
     );

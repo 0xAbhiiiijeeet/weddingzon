@@ -27,68 +27,81 @@ class NotificationCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: Colors.black12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.grey.shade50,
-              backgroundImage: (profilePhoto != null && profilePhoto.isNotEmpty)
-                  ? NetworkImage(profilePhoto)
-                  : null,
-              child: (profilePhoto == null || profilePhoto.isEmpty)
-                  ? Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 16),
-
-            // Text Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        height: 1.4,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          final username = data['username'] as String?;
+          if (username != null && username.isNotEmpty) {
+            Navigator.pushNamed(context, '/profile/user', arguments: username);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.grey.shade50,
+                backgroundImage:
+                    (profilePhoto != null && profilePhoto.isNotEmpty)
+                    ? NetworkImage(profilePhoto)
+                    : null,
+                child: (profilePhoto == null || profilePhoto.isEmpty)
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const TextSpan(text: ' '),
-                        TextSpan(text: action),
-                        const TextSpan(text: ' '),
-                        TextSpan(
-                          text: typeText,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    date,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
-                ],
+                      )
+                    : null,
               ),
-            ),
+              const SizedBox(width: 16),
 
-            // Arrow Icon (Optional: Indicate navigation)
-            Icon(Icons.arrow_forward, size: 20, color: Colors.grey.shade400),
-          ],
+              // Text Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          height: 1.4,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const TextSpan(text: ' '),
+                          TextSpan(text: action),
+                          const TextSpan(text: ' '),
+                          TextSpan(
+                            text: typeText,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      date,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow Icon (Indicate navigation)
+              Icon(Icons.arrow_forward, size: 20, color: Colors.grey.shade400),
+            ],
+          ),
         ),
       ),
     );

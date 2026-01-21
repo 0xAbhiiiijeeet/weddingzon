@@ -18,9 +18,14 @@ import '../../features/feed/screens/user_profile_screen.dart';
 import '../../features/feed/models/feed_user.dart';
 import '../../features/chat/screens/conversations_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
+import '../../features/connections/screens/connections_screen.dart';
+import '../../features/profile/screens/profile_viewers_screen.dart';
+
+import '../../features/splash/screens/splash_screen.dart';
 
 class AppRoutes {
-  static const String landing = '/';
+  static const String splash = '/';
+  static const String landing = '/landing';
   static const String signInChoice = '/auth/login-choice';
   static const String signUpChoice = '/auth/signup-choice';
   static const String googleLogin = '/auth/google-login';
@@ -38,10 +43,13 @@ class AppRoutes {
   static const String editProfile = '/profile/edit';
   static const String photoManager = '/profile/photos';
   static const String userProfile = '/profile/user';
+  static const String profileViewers = '/profile/viewers';
   static const String conversations = '/chat/conversations';
   static const String chat = '/chat';
+  static const String connections = '/connections';
 
   static Map<String, WidgetBuilder> get routes => {
+    splash: (_) => const SplashScreen(),
     landing: (_) => const LandingScreen(),
     signInChoice: (_) => const LoginChoiceScreen(),
     signUpChoice: (_) => const SignupChoiceScreen(),
@@ -61,8 +69,13 @@ class AppRoutes {
     profileForm: (_) => const ProfileFormScreen(),
     feed: (_) => const MainShellScreen(initialIndex: 0),
     explore: (_) => const MainShellScreen(initialIndex: 1),
-    chatTab: (_) => const MainShellScreen(initialIndex: 2),
-    profileTab: (_) => const MainShellScreen(initialIndex: 3),
+    chatTab: (_) => const MainShellScreen(initialIndex: 3),
+    profileTab: (_) => const MainShellScreen(initialIndex: 4),
+    connections: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ConnectionsScreen(initialIndex: args?['initialIndex'] ?? 0);
+    },
     editProfile: (_) => const EditProfileScreen(),
     photoManager: (_) => const PhotoManagerScreen(),
     userProfile: (context) {
@@ -80,6 +93,7 @@ class AppRoutes {
       }
       throw ArgumentError('Username required for userProfile route');
     },
+    profileViewers: (_) => const ProfileViewersScreen(),
     conversations: (_) => const ConversationsScreen(),
     chat: (context) {
       final args =

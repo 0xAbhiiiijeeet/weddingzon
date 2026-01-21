@@ -19,6 +19,7 @@ class AppConstants {
   static const String usersFeed = '/users/feed';
   static const String usersSearch = '/users/search';
   static const String usersProfile = '/users'; // GET /users/:username
+  static const String users = '/users'; // Base users endpoint
 
   // Connections
   static const String connectionsSend = '/connections/send';

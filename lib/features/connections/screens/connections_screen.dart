@@ -6,7 +6,9 @@ import 'invites_tab.dart';
 import 'notifications_tab.dart';
 
 class ConnectionsScreen extends StatefulWidget {
-  const ConnectionsScreen({super.key});
+  final int initialIndex;
+
+  const ConnectionsScreen({super.key, this.initialIndex = 0});
 
   @override
   State<ConnectionsScreen> createState() => _ConnectionsScreenState();
@@ -19,7 +21,11 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialIndex,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ConnectionsProvider>().loadIncomingRequests();
       context.read<NotificationsProvider>().loadNotifications();

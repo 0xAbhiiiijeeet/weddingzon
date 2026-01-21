@@ -11,6 +11,10 @@ import '../../map/screens/map_screen.dart';
 import '../../../core/services/api_service.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../providers/badge_provider.dart';
+import '../../connections/providers/connections_provider.dart';
+import '../../notifications/providers/notifications_provider.dart';
+import '../../../shared/widgets/notification_badge.dart';
 
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
@@ -30,7 +34,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   final List<Widget> _screens = [
     const FeedScreen(),
     const ExploreScreen(),
-    const MapScreen(), // New Map Tab
+    const MapScreen(), 
     const ConversationsScreen(),
     const MyProfileScreen(),
   ];
@@ -47,7 +51,15 @@ class _MainShellScreenState extends State<MainShellScreen>
     // Connect socket for chat after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
+      _initializeBadges();
     });
+  }
+
+  void _initializeBadges() {
+    // Check if context is valid (it should be in postFrame)
+    if (!mounted) return;
+    context.read<ConnectionsProvider>().loadIncomingRequests();
+    context.read<NotificationsProvider>().loadNotifications();
   }
 
   Future<void> _initializeChat() async {
@@ -146,39 +158,49 @@ class _MainShellScreenState extends State<MainShellScreen>
           },
           children: _screens,
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: _onTabTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.deepPurple,
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Feed',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.explore_outlined),
-              activeIcon: Icon(Icons.explore),
-              label: 'Explore',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.map_outlined),
-              activeIcon: Icon(Icons.map),
-              label: 'Map',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
-              label: 'Chat',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-          ],
+        bottomNavigationBar: Consumer<BadgeProvider>(
+          builder: (context, badgeProvider, _) {
+            return BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: _onTabTapped,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: Colors.deepPurple,
+              unselectedItemColor: Colors.grey,
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: 'Feed',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.explore_outlined),
+                  activeIcon: Icon(Icons.explore),
+                  label: 'Explore',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.map_outlined),
+                  activeIcon: Icon(Icons.map),
+                  label: 'Map',
+                ),
+                BottomNavigationBarItem(
+                  icon: NotificationBadge(
+                    count: badgeProvider.chatBadgeCount,
+                    child: const Icon(Icons.chat_bubble_outline),
+                  ),
+                  activeIcon: NotificationBadge(
+                    count: badgeProvider.chatBadgeCount,
+                    child: const Icon(Icons.chat_bubble),
+                  ),
+                  label: 'Chat',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

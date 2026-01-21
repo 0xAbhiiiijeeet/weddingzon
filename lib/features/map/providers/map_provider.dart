@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -91,12 +92,27 @@ class MapProvider extends ChangeNotifier {
     }
   }
 
+  Timer? _debounce;
+
   Future<void> updateRadius(int newRadius) async {
     if (_radius == newRadius) return;
+
     _radius = newRadius;
-    notifyListeners();
-    if (_currentLocation != null) {
-      await fetchNearbyUsers();
-    }
+    notifyListeners(); // Update UI immediately for slider
+
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_currentLocation != null) {
+        debugPrint('[MapProvider] Fetching users with new radius: $_radius km');
+        fetchNearbyUsers();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
   }
 }

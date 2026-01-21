@@ -10,18 +10,27 @@ class NotificationsTab extends StatefulWidget {
   State<NotificationsTab> createState() => _NotificationsTabState();
 }
 
-class _NotificationsTabState extends State<NotificationsTab> {
+class _NotificationsTabState extends State<NotificationsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
-    // Load notifications when the tab is first built
+    // No need to load here if ConnectionsScreen/MainShell already does it.
+    // If we want to ensure data is loaded, check if empty.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NotificationsProvider>().loadNotifications();
+      final provider = context.read<NotificationsProvider>();
+      if (provider.notifications.isEmpty) {
+        provider.loadNotifications();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Consumer<NotificationsProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
@@ -49,12 +58,13 @@ class _NotificationsTabState extends State<NotificationsTab> {
         }
 
         return RefreshIndicator(
-          onRefresh: () => provider.loadNotifications(),
+          onRefresh: () => provider.loadNotifications(forceRefresh: true),
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: provider.notifications.length,
             itemBuilder: (context, index) {
               return NotificationCard(
+                key: ValueKey(provider.notifications[index].id),
                 notification: provider.notifications[index],
               );
             },

@@ -8,7 +8,7 @@ import '../providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/models/photo_model.dart';
 import '../../../shared/widgets/image_viewer.dart';
-import '../../../core/services/api_service.dart'; // Added import
+import '../../../core/services/api_service.dart';
 
 class PhotoManagerScreen extends StatefulWidget {
   const PhotoManagerScreen({super.key});
@@ -371,20 +371,30 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
       final files = filesToUpload.map((xFile) => File(xFile.path)).toList();
       final provider = context.read<ProfileProvider>();
-      final success = await provider.uploadPhotos(files);
+      final response = await provider.uploadPhotos(files);
 
       if (!mounted) return;
 
-      if (success) {
+      if (response.success) {
         await context.read<AuthProvider>().refreshUser();
+
+        Color toastColor = Colors.green;
+        if (response.errors != null && response.errors!.isNotEmpty) {
+          toastColor = Colors.orange;
+        }
+
         Fluttertoast.showToast(
-          msg: '${files.length} photo(s) uploaded successfully',
-          backgroundColor: Colors.green,
+          msg:
+              response.message ??
+              '${files.length} photo(s) uploaded successfully',
+          backgroundColor: toastColor,
+          toastLength: Toast.LENGTH_LONG,
         );
       } else {
         Fluttertoast.showToast(
-          msg: 'Failed to upload photos',
+          msg: response.message ?? 'Failed to upload photos',
           backgroundColor: Colors.red,
+          toastLength: Toast.LENGTH_LONG,
         );
       }
     } catch (e) {

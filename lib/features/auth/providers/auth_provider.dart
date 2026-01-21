@@ -45,7 +45,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkAuthStatus() async {
+  Future<void> checkAuthStatus({bool autoRoute = true}) async {
     _setCheckingAuth(true);
     debugPrint('[AUTH] ========== CHECKING AUTH STATUS ==========');
 
@@ -69,7 +69,9 @@ class AuthProvider with ChangeNotifier {
         debugPrint(
           '[AUTH] PROFILE COMPLETE: ${_currentUser?.isProfileComplete}',
         );
-        _routeUserForLogin(_currentUser!);
+        if (autoRoute) {
+          routeUser(_currentUser!);
+        }
       } else {
         debugPrint('[AUTH] Server says no active session: ${response.message}');
 
@@ -77,7 +79,9 @@ class AuthProvider with ChangeNotifier {
           debugPrint(
             '[AUTH] Using cached user (session expired but user has completed profile)',
           );
-          _routeUserForLogin(cachedUser);
+          if (autoRoute) {
+            routeUser(cachedUser);
+          }
         } else if (cachedUser != null) {
           debugPrint(
             '[AUTH] Cached user has incomplete profile - need to re-auth',
@@ -93,7 +97,9 @@ class AuthProvider with ChangeNotifier {
       // Network error - if we have cached user, use them
       if (_currentUser != null) {
         debugPrint('[AUTH] Using cached user due to network error');
-        _routeUserForLogin(_currentUser!);
+        if (autoRoute) {
+          routeUser(_currentUser!);
+        }
         _setCheckingAuth(false);
         return;
       }
@@ -136,6 +142,13 @@ class AuthProvider with ChangeNotifier {
               backgroundColor: Colors.green,
             );
             _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+          } else if (_currentUser!.phoneNumber != null &&
+              _currentUser!.phoneNumber!.isNotEmpty) {
+            // If mobile number exists, skip mobile signup and go to role selection (or next onboarding step)
+            debugPrint(
+              '[AUTH] Mobile number exists, treating as login (skipping mobile setup)',
+            );
+            _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
           } else {
             Fluttertoast.showToast(
               msg: "Step 1 complete! Now verify your phone number",
@@ -145,7 +158,7 @@ class AuthProvider with ChangeNotifier {
           }
         } else {
           // LOGIN: Route based on completion status
-          _routeUserForLogin(_currentUser!);
+          routeUser(_currentUser!);
         }
       } else {
         debugPrint('[AUTH] Google auth failed: ${response.message}');
@@ -247,7 +260,7 @@ class AuthProvider with ChangeNotifier {
           }
         } else {
           // LOGIN: Route based on completion status
-          _routeUserForLogin(_currentUser!);
+          routeUser(_currentUser!);
         }
       } else {
         debugPrint('[AUTH] OTP verification failed: ${response.message}');
@@ -267,7 +280,15 @@ class AuthProvider with ChangeNotifier {
     _setLoading(false);
   }
 
-  void _routeUserForLogin(User user) {
+  void routeCurrentUser() {
+    if (_currentUser != null) {
+      routeUser(_currentUser!);
+    } else {
+      _navService.pushNamedAndRemoveUntil(AppRoutes.landing);
+    }
+  }
+
+  void routeUser(User user) {
     debugPrint('[AUTH] ========== ROUTING USER (LOGIN) ==========');
     debugPrint('[AUTH] User ID: ${user.id}');
     debugPrint('[AUTH] Email: ${user.email}');

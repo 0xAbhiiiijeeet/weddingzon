@@ -12,39 +12,39 @@ class NotificationsProvider with ChangeNotifier {
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
 
-  List<NotificationModel> get notifications => _notifications;
   bool get isLoading => _isLoading;
 
   /// Load from local storage + fetch backend history (my-connections pseudo-history)
-  Future<void> loadNotifications() async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> loadNotifications({bool forceRefresh = false}) async {
+    if (_isLoading && !forceRefresh) return;
+
+    // Only show loading indicator if we don't have data or explicitly forcing
+    if (_notifications.isEmpty || forceRefresh) {
+      _isLoading = true;
+      notifyListeners();
+    }
 
     // 1. Load Local
     final local = await _storageService.getNotifications();
-    _notifications = List.from(local);
+    // Create a temporary list to avoid clearing state affecting UI immediately
+    List<NotificationModel> tempList = List.from(local);
 
     // 2. Load "Accepted Connections" as pseudo-notifications if needed
-    // This makes sure historical connection acceptances are visible
-    await _loadAcceptedConnections();
+    await _loadAcceptedConnections(tempList);
 
+    _notifications = tempList;
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<void> _loadAcceptedConnections() async {
+  Future<void> _loadAcceptedConnections(
+    List<NotificationModel> targetList,
+  ) async {
     final response = await _connectionsRepository.getMyConnections();
     if (response.success && response.data != null) {
       final connections = response.data as List<dynamic>;
 
       // Convert connections to pseudo-notifications
-      // We don't have timestamps, so we just add them if not present by some ID logic
-      // But simple way: just map them and show them.
-      // The issue is duplication if we save them locally too.
-      // Strategy: Only show "Accepted" from backend if we don't have a local record?
-      // Or just mix them in?
-      // User simplified requirement: Show them.
-
       final connectionNotifications = connections.map((c) {
         final username = c['username'] ?? 'User';
         return NotificationModel(
@@ -53,28 +53,48 @@ class NotificationsProvider with ChangeNotifier {
           body: '$username accepted your connection request',
           type: 'request_accepted',
           data: {'username': username},
-          timestamp: DateTime.now(), // Unknown time
+          timestamp: DateTime.now(), // Unknown time, keeping as now
           isRead: true,
         );
       }).toList();
 
       for (var n in connectionNotifications) {
-        // Avoid duplicates if possible (rudimentary check)
-        if (!_notifications.any((existing) => existing.body == n.body)) {
-          _notifications.add(n);
+        // Avoid duplicates checking against the target list
+        if (!targetList.any((existing) => existing.body == n.body)) {
+          targetList.add(n);
         }
       }
-
-      // Sort by time (though backend ones have fake time 'now', so they appear top/bottom)
-      // Ideally we'd put them at bottom if they are old.
     }
   }
+
+  /// Internal filter to ensure we only show desired notification types
+  List<NotificationModel> get filteredNotifications {
+    return _notifications.where((n) {
+      // User requested ONLY connection accept notifications
+      // Types: 'request_accepted' (connection), 'photo_access_granted', 'details_access_granted'
+      return n.type == 'request_accepted';
+    }).toList();
+  }
+
+  // Expose filtered list by default
+  List<NotificationModel> get notifications => filteredNotifications;
 
   Future<void> markAsRead(String id) async {
     await _storageService.markAsRead(id);
     final index = _notifications.indexWhere((n) => n.id == id);
     if (index != -1) {
       _notifications[index] = _notifications[index].copyWith(isRead: true);
+      notifyListeners();
+    }
+    if (index != -1) {
+      _notifications[index] = _notifications[index].copyWith(isRead: true);
+      notifyListeners();
+    }
+  }
+
+  void handleRealTimeNotification(NotificationModel notification) {
+    if (!_notifications.any((n) => n.id == notification.id)) {
+      _notifications.insert(0, notification);
       notifyListeners();
     }
   }

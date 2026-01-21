@@ -77,7 +77,7 @@ class NotificationService {
       debugPrint(
         '[NOTIFICATION] Foreground message: ${message.notification?.title}',
       );
-      _showLocalNotification(message);
+      _showRemoteNotification(message);
       _saveNotification(message);
     });
 
@@ -133,30 +133,65 @@ class NotificationService {
     }
   }
 
-  void _showLocalNotification(RemoteMessage message) {
-    // Only show if notification has title/body
-    final notification = message.notification;
-    final android = message.notification?.android;
-
-    if (notification != null && android != null) {
-      _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'weddingzon_channel', // id
-            'WeddingZon Notifications', // name
-            channelDescription: 'Notifications for WeddingZon updates',
-            importance: Importance.max,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-          ),
-          iOS: const DarwinNotificationDetails(),
+  void _showLocalNotification({
+    required String title,
+    required String body,
+    String? payload,
+    int? id,
+  }) {
+    _localNotifications.show(
+      id ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'weddingzon_channel', // id
+          'WeddingZon Notifications', // name
+          channelDescription: 'Notifications for WeddingZon updates',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
         ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+      payload: payload,
+    );
+  }
+
+  void _showRemoteNotification(RemoteMessage message) {
+    final notification = message.notification;
+    if (notification != null) {
+      _showLocalNotification(
+        title: notification.title ?? 'New Notification',
+        body: notification.body ?? '',
         payload: jsonEncode(message.data),
+        id: notification.hashCode,
       );
     }
+  }
+
+  /// Handle notification received via Socket.IO
+  Future<void> handleSocketNotification(Map<String, dynamic> data) async {
+    debugPrint('[NOTIFICATION] Handling socket notification: $data');
+
+    final title = data['title'] ?? 'New Notification';
+    final body = data['body'] ?? '';
+    final type = data['type'] ?? 'general';
+
+    // Show local notification
+    _showLocalNotification(title: title, body: body, payload: jsonEncode(data));
+
+    // Save to local storage
+    final model = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      body: body,
+      type: type,
+      data: data,
+      timestamp: DateTime.now(),
+    );
+
+    await _storageService.saveNotification(model);
   }
 
   Future<void> _saveNotification(RemoteMessage message) async {
@@ -180,11 +215,25 @@ class NotificationService {
     final type = data['type'];
 
     if (type == 'connection_request') {
-      _navigationService.pushNamedAndRemoveUntil(AppRoutes.feed);
+      _navigationService.pushNamedAndRemoveUntil(
+        AppRoutes.connections,
+        arguments: {'initialIndex': 0}, // 0 = Invites tab
+      );
     } else if (type == 'request_accepted') {
-      _navigationService.pushNamedAndRemoveUntil(AppRoutes.feed);
+      _navigationService.pushNamedAndRemoveUntil(
+        AppRoutes.connections,
+        arguments: {'initialIndex': 1}, // 1 = Notifications tab
+      );
     } else if (type == 'chat_message') {
+      // Route to conversations list as we might not have full user details for chat screen
+      // Ideally we would fetch user details here then route to chat, but for safety:
+      debugPrint(
+        '[NOTIFICATION] Routing to conversations screen for chat message',
+      );
       _navigationService.pushNamedAndRemoveUntil(AppRoutes.chatTab);
+    } else if (type == 'profile_view') {
+      debugPrint('[NOTIFICATION] Routing to profile viewers screen');
+      _navigationService.pushNamedAndRemoveUntil(AppRoutes.profileViewers);
     } else {
       debugPrint('[NOTIFICATION] Unknown notification type: $type');
       _navigationService.pushNamedAndRemoveUntil(AppRoutes.feed);

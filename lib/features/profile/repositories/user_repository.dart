@@ -7,12 +7,65 @@ import '../../../core/models/api_response.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/models/photo_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../profile/models/profile_viewer_model.dart';
 import '../../../core/constants/app_constants.dart';
 
 class UserRepository {
   final ApiService _apiService;
 
   UserRepository(this._apiService);
+
+  // =====================================================
+  // PROFILE VIEWS
+  // =====================================================
+
+  /// Record a profile view
+  /// POST /users/view/:userId
+  Future<ApiResponse<void>> recordProfileView(String userId) async {
+    try {
+      final response = await _apiService.dio.post(
+        '${AppConstants.users}/view/$userId', // Assumes users base is /api/users
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      return response.statusCode == 200
+          ? ApiResponse(success: true)
+          : ApiResponse(
+              success: false,
+              message: response.data['message'] ?? 'Failed to record view',
+            );
+    } catch (e) {
+      debugPrint('[USER_REPO] Record view error: $e');
+      return ApiResponse(success: false, message: 'Network error');
+    }
+  }
+
+  /// Get profile viewers
+  /// GET /users/viewers
+  Future<ApiResponse<List<ProfileViewer>>> getProfileViewers() async {
+    try {
+      final response = await _apiService.dio.get(
+        '${AppConstants.users}/viewers',
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        final viewers = data
+            .map((json) => ProfileViewer.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return ApiResponse(success: true, data: viewers);
+      }
+
+      return ApiResponse(
+        success: false,
+        message: response.data['message'] ?? 'Failed to fetch viewers',
+      );
+    } catch (e) {
+      debugPrint('[USER_REPO] Get viewers error: $e');
+      return ApiResponse(success: false, message: 'Network error');
+    }
+  }
 
   /// Upload photos with proper MIME type
   /// POST /users/upload-photos (multipart/form-data)
@@ -63,6 +116,7 @@ class UserRepository {
           success: true,
           data: uploadedPhotos,
           message: response.data['message'],
+          errors: response.data['errors'] as List<dynamic>?,
         );
       }
 

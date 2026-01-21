@@ -15,6 +15,10 @@ class MapRepository {
     int radius = 50,
   }) async {
     try {
+      debugPrint(
+        '[MapRepository] Fetching nearby users: lat=$latitude, lng=$longitude, r=$radius',
+      );
+
       final response = await _apiService.dio.get(
         '${AppConstants.baseUrl}/users/nearby',
         queryParameters: {
@@ -24,8 +28,14 @@ class MapRepository {
         },
       );
 
-      if (response.statusCode == 200 && response.data['users'] != null) {
-        final List<dynamic> usersJson = response.data['users'];
+      debugPrint('[MapRepository] Response status: ${response.statusCode}');
+      debugPrint('[MapRepository] Response data: ${response.data}');
+
+      if (response.statusCode == 200 &&
+          (response.data['data'] != null || response.data['users'] != null)) {
+        final List<dynamic> usersJson =
+            response.data['data'] ?? response.data['users'];
+        debugPrint('[MapRepository] Parsed ${usersJson.length} users.');
         return usersJson.map((json) => NearbyUser.fromJson(json)).toList();
       }
       return [];

@@ -255,6 +255,28 @@ class ConnectionProvider extends ChangeNotifier {
     }
   }
 
+  // Update statuses from Feed items
+  void updateStatusesFromFeed(List<dynamic> users) {
+    bool changed = false;
+    for (final user in users) {
+      if (user.username.isNotEmpty) {
+        if (user.photoRequestStatus != null) {
+          _photoAccessStatuses[user.username] = user.photoRequestStatus!;
+          changed = true;
+        }
+        if (user.connectionStatus != null) {
+          _connectionStatuses[user.username] = user.connectionStatus!;
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      debugPrint('[CONNECTION] Updated statuses from feed data');
+      notifyListeners();
+    }
+  }
+
   void reset() {
     _photoAccessStatuses.clear();
     _detailsStatuses.clear();
