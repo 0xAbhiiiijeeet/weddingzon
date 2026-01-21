@@ -12,9 +12,10 @@ class SocketService {
   Function(Message)? onMessageReceived;
   Function(String)? onUserTyping;
   Function(String)? onUserStoppedTyping;
+  Function(Map<String, dynamic>)? onNotificationReceived; // New callback
   Function()? onConnected;
   Function()? onDisconnected;
-  Function()? onUnauthorized; // New callback
+  Function()? onUnauthorized;
   Function(dynamic)? onError;
 
   bool get isConnected => _isConnected;
@@ -107,20 +108,63 @@ class SocketService {
       }
     });
 
-    // Listen for typing events
-    _socket?.on('typing', (data) {
-      debugPrint('[SOCKET] User typing: $data');
-      if (data != null && data['senderId'] != null) {
-        onUserTyping?.call(data['senderId'].toString());
+    // Listen for notifications
+    _socket?.on('notification', (data) {
+      debugPrint('[SOCKET] Notification received: $data');
+      if (data != null && data is Map<String, dynamic>) {
+        onNotificationReceived?.call(data);
       }
     });
 
-    _socket?.on('stop_typing', (data) {
-      debugPrint('[SOCKET] User stopped typing: $data');
-      if (data != null && data['senderId'] != null) {
-        onUserStoppedTyping?.call(data['senderId'].toString());
+    // Listen for typing events
+    // Log revealed event name is 'user_typing' and key is 'userId'
+    void handleTyping(dynamic data) {
+      debugPrint('[SOCKET] User typing event: $data');
+      if (data != null) {
+        String? senderId;
+        if (data is Map<String, dynamic>) {
+          if (data['userId'] != null) {
+            senderId = data['userId'].toString();
+          } else if (data['senderId'] != null) {
+            senderId = data['senderId'].toString();
+          } else if (data['sender'] != null && data['sender'] is Map) {
+            senderId =
+                data['sender']['_id']?.toString() ??
+                data['sender']['id']?.toString();
+          }
+        }
+        if (senderId != null) {
+          onUserTyping?.call(senderId);
+        }
       }
-    });
+    }
+
+    void handleStopTyping(dynamic data) {
+      debugPrint('[SOCKET] User stop typing event: $data');
+      if (data != null) {
+        String? senderId;
+        if (data is Map<String, dynamic>) {
+          if (data['userId'] != null) {
+            senderId = data['userId'].toString();
+          } else if (data['senderId'] != null) {
+            senderId = data['senderId'].toString();
+          } else if (data['sender'] != null && data['sender'] is Map) {
+            senderId =
+                data['sender']['_id']?.toString() ??
+                data['sender']['id']?.toString();
+          }
+        }
+        if (senderId != null) {
+          onUserStoppedTyping?.call(senderId);
+        }
+      }
+    }
+
+    _socket?.on('typing', handleTyping);
+    _socket?.on('user_typing', handleTyping);
+
+    _socket?.on('stop_typing', handleStopTyping);
+    _socket?.on('user_stop_typing', handleStopTyping);
   }
 
   /// Send a message to a specific user
@@ -173,6 +217,7 @@ class SocketService {
     onMessageReceived = null;
     onUserTyping = null;
     onUserStoppedTyping = null;
+    onNotificationReceived = null;
     onConnected = null;
     onDisconnected = null;
     onError = null;

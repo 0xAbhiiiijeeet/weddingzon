@@ -3,12 +3,14 @@ class ApiResponse<T> {
   final String? message;
   final T? data;
   final String? nextCursor;
+  final List<dynamic>? errors;
 
   ApiResponse({
     required this.success,
     this.message,
     this.data,
     this.nextCursor,
+    this.errors,
   });
 
   factory ApiResponse.fromJson(
@@ -20,6 +22,7 @@ class ApiResponse<T> {
       message: json['message'],
       data: json['data'] != null ? fromJsonT(json['data']) : null,
       nextCursor: json['nextCursor'],
+      errors: json['errors'] as List<dynamic>?,
     );
   }
 }

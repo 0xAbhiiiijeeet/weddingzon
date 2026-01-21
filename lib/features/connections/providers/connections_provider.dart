@@ -334,5 +334,19 @@ class ConnectionsProvider with ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  void handleRealTimeRequest(Map<String, dynamic> data) {
+    // Avoid duplicates
+    if (_incomingRequests.any((r) => r['_id'] == data['requestId'])) {
+      return;
+    }
+
+    // Since socket data might be simplified, we might want to reload
+    // But for speed, let's try to add if format matches, or reload.
+    // Safest is to just reload for now to ensure we have full user details
+    loadIncomingRequests();
   }
 }

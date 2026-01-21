@@ -245,30 +245,49 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () =>
-                Navigator.pushNamed(context, AppRoutes.editProfile),
-            icon: const Icon(Icons.edit),
-            label: const Text('Edit Profile'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.editProfile),
+                icon: const Icon(Icons.edit),
+                label: const Text('Edit Profile'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.photoManager),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Manage Photos'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () =>
-                Navigator.pushNamed(context, AppRoutes.photoManager),
-            icon: const Icon(Icons.photo_library),
-            label: const Text('Manage Photos'),
+                Navigator.pushNamed(context, AppRoutes.profileViewers),
+            icon: const Icon(Icons.visibility),
+            label: const Text('Who Viewed Your Profile'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
+              foregroundColor: Colors.pink,
+              side: const BorderSide(color: Colors.pinkAccent),
             ),
           ),
         ),

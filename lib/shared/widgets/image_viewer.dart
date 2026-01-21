@@ -63,8 +63,8 @@ class _ImageViewerState extends State<ImageViewer> {
   /// Get the appropriate URL to display
   String _getDisplayUrl(Photo photo) {
     if (_shouldBlur(photo)) {
-      // Use blurred URL if available, otherwise use original
-      return photo.blurredUrl ?? photo.url;
+      // Always return original URL
+      return photo.url;
     }
     return photo.url;
   }
@@ -96,6 +96,37 @@ class _ImageViewerState extends State<ImageViewer> {
                       maxScale: PhotoViewComputedScale.covered * 2,
                       heroAttributes: PhotoViewHeroAttributes(tag: photo.url),
                       errorBuilder: (context, error, stackTrace) {
+                        if (photoShouldBlur) {
+                          return const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.lock_outline,
+                                  color: Colors.white70,
+                                  size: 64,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  "Restricted Content",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  "Request access to view this photo",
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
                         return const Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -116,18 +147,20 @@ class _ImageViewerState extends State<ImageViewer> {
                       },
                     ),
 
-                    // Client-side blur overlay if blurredUrl not available
-                    if (photoShouldBlur && photo.blurredUrl == null)
+                    // Client-side blur overlay
+                    if (photoShouldBlur)
                       Positioned.fill(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            color: Colors.black.withOpacity(0.3),
-                            child: const Center(
-                              child: Icon(
-                                Icons.lock,
-                                size: 64,
-                                color: Colors.white70,
+                        child: ClipRect(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            child: Container(
+                              color: Colors.black.withOpacity(0.5),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.lock,
+                                  size: 64,
+                                  color: Colors.white70,
+                                ),
                               ),
                             ),
                           ),

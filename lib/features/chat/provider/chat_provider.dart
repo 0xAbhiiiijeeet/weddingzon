@@ -43,6 +43,15 @@ class ChatProvider extends ChangeNotifier {
   bool get isSocketConnected => _socketService.isConnected;
   String? get myUserId => _myUserId;
 
+  // Pagination State
+  int _chatPage = 1;
+  bool _hasMoreMessages = true;
+  bool _isLoadingMore = false;
+  static const int _limit = 20;
+
+  bool get isLoadingMore => _isLoadingMore;
+  bool get hasMoreMessages => _hasMoreMessages;
+
   void _setupSocketListeners() {
     _socketService.onMessageReceived = _handleIncomingMessage;
     _socketService.onUserTyping = _handleUserTyping;
@@ -147,9 +156,28 @@ class ChatProvider extends ChangeNotifier {
         final updated = _conversations.removeAt(index);
         _conversations.insert(0, updated);
       }
-
-      notifyListeners();
+    } else {
+      // New conversation!
+      // We might not have full user details, but we can display what we have or placeholders.
+      // Ideally, the message payload or a separate fetch would provide this.
+      // For now, assume optimistic or minimal data.
+      debugPrint('[CHAT] New conversation created from incoming message');
+      _conversations.insert(
+        0,
+        Conversation(
+          userId: otherUserId,
+          username: 'User', // Placeholder until refresh
+          firstName: '',
+          lastName: '',
+          profilePhoto: null,
+          lastMessage: message.message,
+          unreadCount: 1, // Start with 1 unread
+          updatedAt: message.createdAt,
+        ),
+      );
     }
+
+    notifyListeners();
   }
 
   // =====================================================
@@ -178,17 +206,71 @@ class ChatProvider extends ChangeNotifier {
           profilePhoto: profilePhoto,
         );
 
-    // Load chat history
-    final response = await _chatRepository.getChatHistory(chatWithUserId);
+    // Reset pagination
+    _chatPage = 1;
+    _hasMoreMessages = true;
+    _isLoadingMore = false;
+
+    // Load chat history (First page)
+    final response = await _chatRepository.getChatHistory(
+      chatWithUserId,
+      page: _chatPage,
+      limit: _limit,
+    );
 
     if (response.success && response.data != null) {
       _messages = response.data!;
+      if (response.data!.length < _limit) {
+        _hasMoreMessages = false;
+      }
     }
 
     // Mark as read
     await markAsRead(chatWithUserId);
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadMoreMessages() async {
+    if (_currentChatUserId == null || !_hasMoreMessages || _isLoadingMore) {
+      return;
+    }
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    final nextPage = _chatPage + 1;
+    final response = await _chatRepository.getChatHistory(
+      _currentChatUserId!,
+      page: nextPage,
+      limit: _limit,
+    );
+
+    if (response.success && response.data != null) {
+      final newMessages = response.data!;
+
+      if (newMessages.isNotEmpty) {
+        // Filter duplicates and insert at top
+        final uniqueMessages = newMessages
+            .where(
+              (newMsg) =>
+                  !_messages.any((existing) => existing.id == newMsg.id),
+            )
+            .toList();
+
+        _messages.insertAll(0, uniqueMessages);
+        _chatPage = nextPage;
+
+        if (newMessages.length < _limit) {
+          _hasMoreMessages = false;
+        }
+      } else {
+        _hasMoreMessages = false;
+      }
+    }
+
+    _isLoadingMore = false;
     notifyListeners();
   }
 
@@ -264,10 +346,40 @@ class ChatProvider extends ChangeNotifier {
     stopTyping();
   }
 
+  Future<bool> sendImages(String receiverId, List<File> files) async {
+    if (files.isEmpty) return false;
+
+    _isSending = true;
+    notifyListeners();
+
+    int successCount = 0;
+
+    // Upload images in parallel
+    await Future.wait(
+      files.map((file) async {
+        final success = await _uploadAndSendImage(receiverId, file);
+        if (success) successCount++;
+      }),
+    );
+
+    _isSending = false;
+    notifyListeners();
+
+    return successCount == files.length;
+  }
+
   Future<bool> sendImage(String receiverId, File file) async {
     _isSending = true;
     notifyListeners();
 
+    final success = await _uploadAndSendImage(receiverId, file);
+
+    _isSending = false;
+    notifyListeners();
+    return success;
+  }
+
+  Future<bool> _uploadAndSendImage(String receiverId, File file) async {
     try {
       debugPrint('[CHAT] Starting image upload...');
       final response = await _chatRepository.uploadChatImage(file);
@@ -303,19 +415,13 @@ class ChatProvider extends ChangeNotifier {
           debugPrint('[CHAT] WARNING: Socket not connected!');
         }
 
-        _isSending = false;
-        notifyListeners();
         return true;
       } else {
         debugPrint('[CHAT] Image upload failed: ${response.message}');
-        _isSending = false;
-        notifyListeners();
         return false;
       }
     } catch (e) {
       debugPrint('[CHAT] Error sending image: $e');
-      _isSending = false;
-      notifyListeners();
       return false;
     }
   }
@@ -396,12 +502,12 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _handleUserTyping(String userId) {
-    _typingUsers.add(userId);
+    _typingUsers.add(userId.trim());
     notifyListeners();
   }
 
   void _handleUserStoppedTyping(String userId) {
-    _typingUsers.remove(userId);
+    _typingUsers.remove(userId.trim());
     notifyListeners();
   }
 
@@ -435,6 +541,11 @@ class ChatProvider extends ChangeNotifier {
   // =====================================================
   // CLEANUP
   // =====================================================
+
+  /// Get total unread count across all conversations
+  int get totalUnreadCount {
+    return _conversations.fold(0, (sum, item) => sum + item.unreadCount);
+  }
 
   @override
   void dispose() {

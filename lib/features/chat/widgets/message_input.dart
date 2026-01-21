@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSendMessage;
-  final Function(File) onSendImage;
+  final Function(List<File>) onSendImages; // Changed to accept List<File>
   final VoidCallback? onTypingStarted;
   final VoidCallback? onTypingStopped;
   final bool isSending;
@@ -12,7 +12,7 @@ class MessageInput extends StatefulWidget {
   const MessageInput({
     super.key,
     required this.onSendMessage,
-    required this.onSendImage,
+    required this.onSendImages,
     this.onTypingStarted,
     this.onTypingStopped,
     this.isSending = false,
@@ -57,7 +57,7 @@ class _MessageInputState extends State<MessageInput> {
     widget.onTypingStopped?.call();
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImages() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (context) => SafeArea(
@@ -65,7 +65,7 @@ class _MessageInputState extends State<MessageInput> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Gallery'),
+              title: const Text('Gallery (upto 10 images)'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
@@ -81,23 +81,51 @@ class _MessageInputState extends State<MessageInput> {
     if (source == null) return;
 
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
+      List<XFile> images = [];
 
-      if (image != null && mounted) {
-        debugPrint('[MESSAGE_INPUT] Image picked: ${image.path}');
-        widget.onSendImage(File(image.path));
+      if (source == ImageSource.gallery) {
+        // Pick multiple images from gallery
+        images = await _picker.pickMultiImage(
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+          limit: 10, // Limit to 10 images
+        );
+      } else {
+        // Pick single image from camera
+        final XFile? image = await _picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+        if (image != null) {
+          images.add(image);
+        }
+      }
+
+      if (images.isNotEmpty && mounted) {
+        debugPrint('[MESSAGE_INPUT] Images picked: ${images.length}');
+
+        if (images.length > 10) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You can only send up to 10 images at once.'),
+              ),
+            );
+          }
+          images = images.take(10).toList();
+        }
+
+        widget.onSendImages(images.map((x) => File(x.path)).toList());
       }
     } catch (e) {
-      debugPrint('[MESSAGE_INPUT] Error picking image: $e');
+      debugPrint('[MESSAGE_INPUT] Error picking images: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+        ).showSnackBar(SnackBar(content: Text('Failed to pick images: $e')));
       }
     }
   }
@@ -123,7 +151,7 @@ class _MessageInputState extends State<MessageInput> {
           children: [
             // Image picker button
             IconButton(
-              onPressed: widget.isSending ? null : _pickImage,
+              onPressed: widget.isSending ? null : _pickImages,
               icon: const Icon(Icons.image_outlined),
               color: theme.colorScheme.primary,
             ),

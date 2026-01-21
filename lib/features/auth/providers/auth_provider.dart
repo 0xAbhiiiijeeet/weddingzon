@@ -5,6 +5,8 @@ import '../../../core/services/navigation_service.dart';
 import '../../../core/services/user_storage_service.dart';
 import '../../../core/routes/app_routes.dart';
 import '../repositories/auth_repository.dart';
+import '../../../core/services/notification_service.dart';
+import '../../notifications/repositories/notification_repository.dart';
 
 import '../../../core/services/socket_service.dart';
 
@@ -12,13 +14,21 @@ class AuthProvider with ChangeNotifier {
   final AuthRepository _authRepository;
   final NavigationService _navService;
   final SocketService _socketService;
+  final NotificationService _notificationService;
+  final NotificationRepository _notificationRepository;
 
   User? _currentUser;
   bool _isLoading = false;
   bool _isCheckingAuth = false;
   bool isSignupFlow = false;
 
-  AuthProvider(this._authRepository, this._navService, this._socketService);
+  AuthProvider(
+    this._authRepository,
+    this._navService,
+    this._socketService,
+    this._notificationService,
+    this._notificationRepository,
+  );
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -35,42 +45,43 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkAuthStatus() async {
+  Future<void> checkAuthStatus({bool autoRoute = true}) async {
     _setCheckingAuth(true);
     debugPrint('[AUTH] ========== CHECKING AUTH STATUS ==========');
 
     try {
-      // First, try to load cached user
       final cachedUser = await UserStorageService.loadUser();
       if (cachedUser != null) {
         _currentUser = cachedUser;
         debugPrint('[AUTH] Loaded cached user: ${cachedUser.email}');
       }
 
-      // Then verify with server
       final response = await _authRepository.getCurrentUser();
 
       if (response.success && response.data != null) {
-        // Server confirmed user is authenticated - update cached data
         _currentUser = response.data;
         await _saveUserLocally(_currentUser!);
         debugPrint('[AUTH] User verified by server');
+
+        await _registerNotificationToken();
+
         debugPrint('[AUTH] User: ${_currentUser?.email}');
         debugPrint(
           '[AUTH] PROFILE COMPLETE: ${_currentUser?.isProfileComplete}',
         );
-        _routeUserForLogin(_currentUser!);
+        if (autoRoute) {
+          routeUser(_currentUser!);
+        }
       } else {
-        // Server says no session (401) - but we have cached user
         debugPrint('[AUTH] Server says no active session: ${response.message}');
 
-        // If we have a cached user with completed profile, USE THEM!
-        // Don't clear - let user continue with cached data
         if (cachedUser != null && cachedUser.isProfileComplete) {
           debugPrint(
             '[AUTH] Using cached user (session expired but user has completed profile)',
           );
-          _routeUserForLogin(cachedUser);
+          if (autoRoute) {
+            routeUser(cachedUser);
+          }
         } else if (cachedUser != null) {
           debugPrint(
             '[AUTH] Cached user has incomplete profile - need to re-auth',
@@ -86,7 +97,9 @@ class AuthProvider with ChangeNotifier {
       // Network error - if we have cached user, use them
       if (_currentUser != null) {
         debugPrint('[AUTH] Using cached user due to network error');
-        _routeUserForLogin(_currentUser!);
+        if (autoRoute) {
+          routeUser(_currentUser!);
+        }
         _setCheckingAuth(false);
         return;
       }
@@ -109,6 +122,10 @@ class AuthProvider with ChangeNotifier {
       if (response.success && response.data != null) {
         _currentUser = response.data;
         await _saveUserLocally(_currentUser!);
+
+        // Register Notification Token
+        await _registerNotificationToken();
+
         debugPrint('[AUTH] Google auth successful');
         debugPrint('[AUTH] User: ${_currentUser?.email}');
         debugPrint('[AUTH] Phone Verified: ${_currentUser?.isPhoneVerified}');
@@ -125,6 +142,13 @@ class AuthProvider with ChangeNotifier {
               backgroundColor: Colors.green,
             );
             _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+          } else if (_currentUser!.phoneNumber != null &&
+              _currentUser!.phoneNumber!.isNotEmpty) {
+            // If mobile number exists, skip mobile signup and go to role selection (or next onboarding step)
+            debugPrint(
+              '[AUTH] Mobile number exists, treating as login (skipping mobile setup)',
+            );
+            _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
           } else {
             Fluttertoast.showToast(
               msg: "Step 1 complete! Now verify your phone number",
@@ -134,7 +158,7 @@ class AuthProvider with ChangeNotifier {
           }
         } else {
           // LOGIN: Route based on completion status
-          _routeUserForLogin(_currentUser!);
+          routeUser(_currentUser!);
         }
       } else {
         debugPrint('[AUTH] Google auth failed: ${response.message}');
@@ -208,6 +232,10 @@ class AuthProvider with ChangeNotifier {
       if (response.success && response.data != null) {
         _currentUser = response.data;
         await _saveUserLocally(_currentUser!);
+
+        // Register Notification Token
+        await _registerNotificationToken();
+
         debugPrint('[AUTH] OTP verified');
         debugPrint(
           '[AUTH] User: ${_currentUser?.email ?? _currentUser?.phoneNumber}',
@@ -232,7 +260,7 @@ class AuthProvider with ChangeNotifier {
           }
         } else {
           // LOGIN: Route based on completion status
-          _routeUserForLogin(_currentUser!);
+          routeUser(_currentUser!);
         }
       } else {
         debugPrint('[AUTH] OTP verification failed: ${response.message}');
@@ -252,7 +280,15 @@ class AuthProvider with ChangeNotifier {
     _setLoading(false);
   }
 
-  void _routeUserForLogin(User user) {
+  void routeCurrentUser() {
+    if (_currentUser != null) {
+      routeUser(_currentUser!);
+    } else {
+      _navService.pushNamedAndRemoveUntil(AppRoutes.landing);
+    }
+  }
+
+  void routeUser(User user) {
     debugPrint('[AUTH] ========== ROUTING USER (LOGIN) ==========');
     debugPrint('[AUTH] User ID: ${user.id}');
     debugPrint('[AUTH] Email: ${user.email}');
@@ -276,6 +312,7 @@ class AuthProvider with ChangeNotifier {
         backgroundColor: Colors.orange,
       );
       _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
+      _logMissingFields(user);
     } else {
       debugPrint('[AUTH] Profile complete, routing to FEED');
       _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
@@ -301,6 +338,9 @@ class AuthProvider with ChangeNotifier {
       // Disconnect socket BEFORE clearing user data
       _socketService.disconnect();
       debugPrint('[AUTH] Socket disconnected');
+
+      // Unregister Notification Token
+      await _unregisterNotificationToken();
 
       await _authRepository.logout();
       await UserStorageService.clearUser();
@@ -338,6 +378,82 @@ class AuthProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint('[AUTH] Refresh error: $e');
+    }
+  }
+
+  void _logMissingFields(User user) {
+    debugPrint('[AUTH] ========== PROFILE FIELD STATUS ==========');
+
+    void check(String label, dynamic value, {required bool isRequired}) {
+      final isEmpty = value == null || (value is String && value.isEmpty);
+      if (isEmpty) {
+        final status = isRequired ? '(REQUIRED)' : '(Optional)';
+        debugPrint('[AUTH] [MISSING] $label $status');
+      }
+    }
+
+    // Basic Details
+    check('Date of Birth', user.dob, isRequired: true);
+    check('Gender', user.gender, isRequired: true);
+    check('Profile Created For', user.createdFor, isRequired: true);
+    check('Height', user.height, isRequired: true);
+    check('Marital Status', user.maritalStatus, isRequired: true);
+    check('Mother Tongue', user.motherTongue, isRequired: true);
+    check('Country', user.country, isRequired: true);
+    check('State', user.state, isRequired: true);
+    check('City', user.city, isRequired: true);
+
+    // Family
+    check('Father Status', user.fatherStatus, isRequired: true);
+    check('Mother Status', user.motherStatus, isRequired: true);
+    check('Family Status', user.familyStatus, isRequired: true);
+    check('Family Type', user.familyType, isRequired: true);
+    check('Family Values', user.familyValues, isRequired: true);
+
+    // Education & Career
+    check('Highest Education', user.highestEducation, isRequired: true);
+    check('Occupation', user.occupation, isRequired: true);
+    check('Employed In', user.employedIn, isRequired: true);
+    check('Annual Income', user.personalIncome, isRequired: true);
+
+    // Religion
+    check('Religion', user.religion, isRequired: true);
+    check('Community', user.community, isRequired: true);
+    check('Sub-Community', user.subCommunity, isRequired: false);
+
+    // Lifestyle
+    check('Appearance', user.appearance, isRequired: true);
+    check('Living Status', user.livingStatus, isRequired: true);
+    check('Eating Habits', user.eatingHabits, isRequired: true);
+    check('Smoking', user.smokingHabits, isRequired: false);
+    check('Drinking', user.drinkingHabits, isRequired: false);
+
+    debugPrint('[AUTH] ==========================================');
+  }
+
+  Future<void> _registerNotificationToken() async {
+    try {
+      final token = await _notificationService.getToken();
+      if (token != null) {
+        await _notificationRepository.registerToken(token);
+        debugPrint('[AUTH] Notification token registered');
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Failed to register notification token: $e');
+    }
+  }
+
+  Future<void> _unregisterNotificationToken() async {
+    try {
+      final token = await _notificationService.getToken();
+      if (token != null) {
+        await _notificationRepository.unregisterToken(token);
+        await _notificationService
+            .deleteToken(); // Optional: delete local token
+        debugPrint('[AUTH] Notification token unregistered');
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Failed to unregister notification token: $e');
     }
   }
 }

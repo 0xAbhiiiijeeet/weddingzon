@@ -3,9 +3,12 @@ import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../connections/screens/connections_screen.dart';
 import '../providers/feed_provider.dart';
+import '../providers/connection_provider.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/shimmer_card.dart';
 import '../widgets/empty_feed_state.dart';
+import '../../shell/providers/badge_provider.dart';
+import '../../../shared/widgets/notification_badge.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -26,8 +29,12 @@ class _FeedScreenState extends State<FeedScreen>
     super.initState();
 
     // Load feed on first mount
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<FeedProvider>().loadFeed();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<FeedProvider>().loadFeed();
+      if (mounted) {
+        final users = context.read<FeedProvider>().users;
+        context.read<ConnectionProvider>().updateStatusesFromFeed(users);
+      }
     });
 
     // Setup infinite scroll
@@ -40,16 +47,24 @@ class _FeedScreenState extends State<FeedScreen>
     super.dispose();
   }
 
-  void _onScroll() {
+  void _onScroll() async {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       // Load more when 200px from bottom
-      context.read<FeedProvider>().loadMore();
+      await context.read<FeedProvider>().loadMore();
+      if (mounted) {
+        final users = context.read<FeedProvider>().users;
+        context.read<ConnectionProvider>().updateStatusesFromFeed(users);
+      }
     }
   }
 
   Future<void> _onRefresh() async {
     await context.read<FeedProvider>().refresh();
+    if (mounted) {
+      final users = context.read<FeedProvider>().users;
+      context.read<ConnectionProvider>().updateStatusesFromFeed(users);
+    }
   }
 
   void _showLogoutDialog() {
@@ -85,15 +100,22 @@ class _FeedScreenState extends State<FeedScreen>
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.people, size: 22),
-            tooltip: 'Connections',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ConnectionsScreen(),
+          Consumer<BadgeProvider>(
+            builder: (context, badgeProvider, _) {
+              return IconButton(
+                icon: NotificationBadge(
+                  count: badgeProvider.connectionBadgeCount,
+                  child: const Icon(Icons.people, size: 22),
                 ),
+                tooltip: 'Connections',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConnectionsScreen(),
+                    ),
+                  );
+                },
               );
             },
           ),

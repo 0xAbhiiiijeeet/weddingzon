@@ -206,15 +206,13 @@ class _ProfileCardState extends State<ProfileCard> {
         } else {
           // User DOESN'T have permission - blur non-profile photos
           shouldShowLockOverlay = true;
+          // ALWAYS use original URL with client-side blur
+          imageUrl = photo.url;
+          shouldApplyLocalBlur = true;
 
-          if (photo.blurredUrl != null && photo.blurredUrl!.isNotEmpty) {
-            // Backend provided pre-blurred version
-            imageUrl = photo.blurredUrl!;
-          } else {
-            // Fallback: use original with client-side blur
-            imageUrl = photo.url;
-            shouldApplyLocalBlur = true;
-          }
+          debugPrint(
+            'Photo: restricted=${photo.restricted}, hasAccess=$hasPhotoAccess, url=$imageUrl',
+          );
         }
 
         return ClipRRect(
@@ -262,12 +260,20 @@ class _ProfileCardState extends State<ProfileCard> {
 
               // Apply client-side blur if needed (fallback)
               if (shouldApplyLocalBlur)
-                BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    child: const Center(
-                      child: Icon(Icons.lock, size: 40, color: Colors.white),
+                Positioned.fill(
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: const Center(
+                          child: Icon(
+                            Icons.lock,
+                            size: 40,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

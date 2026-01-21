@@ -41,6 +41,12 @@ dependencies:
   
   # Chat
   socket_io_client: ^3.1.4
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  geolocator: ^14.0.2
+  firebase_core: ^4.4.0
+  firebase_messaging: ^16.1.1
+  flutter_local_notifications: ^19.5.0
 
 dev_dependencies:
   flutter_test:

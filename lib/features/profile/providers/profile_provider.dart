@@ -33,16 +33,15 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> uploadPhotos(List<File> photos) async {
+  Future<ApiResponse> uploadPhotos(List<File> photos) async {
     _setLoading(true);
     final response = await _userRepository.uploadPhotos(photos);
     _setLoading(false);
 
     if (response.success && response.data != null) {
       notifyListeners();
-      return true;
     }
-    return false;
+    return response;
   }
 
   Future<bool> deletePhoto(String photoId) async {

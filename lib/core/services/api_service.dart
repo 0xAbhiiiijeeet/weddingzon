@@ -176,9 +176,12 @@ class ApiService {
 
           debugPrint('[API] ==================================');
 
-          // Handle 401 Unauthorized - try to refresh token
-          if (response.statusCode == 401 && !_isRefreshing) {
-            debugPrint('[API] 401 detected, attempting token refresh...');
+          // Handle 401 Unauthorized or 403 Forbidden - try to refresh token
+          if ((response.statusCode == 401 || response.statusCode == 403) &&
+              !_isRefreshing) {
+            debugPrint(
+              '[API] ${response.statusCode} detected, attempting token refresh...',
+            );
             _isRefreshing = true;
 
             try {
@@ -228,9 +231,14 @@ class ApiService {
 
   /// Retry a failed request with fresh credentials
   Future<Response> _retry(RequestOptions requestOptions) async {
+    // Remove the 'Cookie' header to force Dio to load fresh cookies from the jar
+    final newHeaders = Map<String, dynamic>.from(requestOptions.headers);
+    newHeaders.remove('cookie');
+    newHeaders.remove('Cookie');
+
     final options = Options(
       method: requestOptions.method,
-      headers: requestOptions.headers,
+      headers: newHeaders,
       extra: requestOptions.extra,
     );
 

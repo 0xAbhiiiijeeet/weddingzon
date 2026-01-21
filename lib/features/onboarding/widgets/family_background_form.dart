@@ -24,11 +24,11 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Father's Occupation/Status
+          // Father's Occupation/Status*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['father_status'],
             decoration: const InputDecoration(
-              labelText: "Father's Occupation/Status",
+              labelText: "Father's Occupation/Status*",
               border: OutlineInputBorder(),
             ),
             items: [
@@ -37,16 +37,17 @@ class FamilyBackgroundForm extends StatelessWidget {
               'Retired',
               'Passed Away',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('father_status', v),
             onSaved: (v) => provider.updateField('father_status', v),
           ),
           const SizedBox(height: 16),
 
-          // Mother's Occupation/Status
+          // Mother's Occupation/Status*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['mother_status'],
             decoration: const InputDecoration(
-              labelText: "Mother's Occupation/Status",
+              labelText: "Mother's Occupation/Status*",
               border: OutlineInputBorder(),
             ),
             items: [
@@ -56,14 +57,15 @@ class FamilyBackgroundForm extends StatelessWidget {
               'Retired',
               'Passed Away',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('mother_status', v),
             onSaved: (v) => provider.updateField('mother_status', v),
           ),
           const SizedBox(height: 16),
 
-          // Brothers
+          // Number of Brothers (0-10)
           TextFormField(
-            initialValue: provider.formData['brothers']?.toString(),
+            initialValue: provider.formData['brothers']?.toString() ?? '0',
             decoration: const InputDecoration(
               labelText: 'Number of Brothers (0-10)',
               border: OutlineInputBorder(),
@@ -85,9 +87,9 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Sisters
+          // Number of Sisters (0-10)
           TextFormField(
-            initialValue: provider.formData['sisters']?.toString(),
+            initialValue: provider.formData['sisters']?.toString() ?? '0',
             decoration: const InputDecoration(
               labelText: 'Number of Sisters (0-10)',
               border: OutlineInputBorder(),
@@ -109,11 +111,11 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Family Status
+          // Family Status*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_status'],
             decoration: const InputDecoration(
-              labelText: 'Family Status',
+              labelText: 'Family Status*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -122,32 +124,34 @@ class FamilyBackgroundForm extends StatelessWidget {
               'Rich',
               'Affluent',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('family_status', v),
             onSaved: (v) => provider.updateField('family_status', v),
           ),
           const SizedBox(height: 16),
 
-          // Family Type
+          // Family Type*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_type'],
             decoration: const InputDecoration(
-              labelText: 'Family Type',
+              labelText: 'Family Type*',
               border: OutlineInputBorder(),
             ),
             items: [
               'Nuclear',
               'Joint',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('family_type', v),
             onSaved: (v) => provider.updateField('family_type', v),
           ),
           const SizedBox(height: 16),
 
-          // Family Values
+          // Family Values*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_values'],
             decoration: const InputDecoration(
-              labelText: 'Family Values',
+              labelText: 'Family Values*',
               border: OutlineInputBorder(),
             ),
             items: [
@@ -155,6 +159,7 @@ class FamilyBackgroundForm extends StatelessWidget {
               'Moderate',
               'Liberal',
             ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            validator: (v) => v == null ? 'Required' : null,
             onChanged: (v) => provider.updateField('family_values', v),
             onSaved: (v) => provider.updateField('family_values', v),
           ),

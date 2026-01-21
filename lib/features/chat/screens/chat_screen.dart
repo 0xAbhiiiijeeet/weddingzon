@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../provider/chat_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
-import '../widgets/typing_indicator.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -51,8 +50,27 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (!provider.isSocketConnected) {
         debugPrint('[CHAT_SCREEN] ⚠️ WARNING: Socket is not connected!');
+        debugPrint('[CHAT_SCREEN] ⚠️ WARNING: Socket is not connected!');
       }
     });
+
+    // Add scroll listener for pagination
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final position = _scrollController.position;
+      // If we are near the top (pixels < 100) and scrolling up
+      // Note: In a normal ListView (not reversed), top is 0.0.
+      if (position.pixels < 100) {
+        final provider = context.read<ChatProvider>();
+        if (provider.hasMoreMessages && !provider.isLoadingMore) {
+          debugPrint('[CHAT_SCREEN] 📜 Loading more messages...');
+          provider.loadMoreMessages();
+        }
+      }
+    }
   }
 
   String _getDisplayName() {
@@ -63,6 +81,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Reset current chat in provider so badges update correctly
+    if (mounted) {
+      context.read<ChatProvider>().closeChat();
+    } else {
+      // If not mounted (unlikely for dispose but possible if tree is being torn down),
+      // we might not get context. But Provider might still be alive.
+      // However, we can't access context easily if unmounted in some cases.
+      // Actually, context is available in State dispose.
+      context.read<ChatProvider>().closeChat();
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -128,6 +156,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     Consumer<ChatProvider>(
                       builder: (context, provider, _) {
+                        debugPrint(
+                          '[CHAT_SCREEN] Consumer rebuild. isOtherUserTyping: ${provider.isOtherUserTyping}',
+                        );
                         if (provider.isOtherUserTyping) {
                           return Text(
                             'typing...',
@@ -199,29 +230,39 @@ class _ChatScreenState extends State<ChatScreen> {
                   _scrollToBottom();
                 });
 
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(top: 8, bottom: 8),
-                  itemCount:
-                      provider.messages.length +
-                      (provider.isOtherUserTyping ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    // Show typing indicator at the bottom
-                    if (index == provider.messages.length &&
-                        provider.isOtherUserTyping) {
-                      return const TypingIndicator();
-                    }
+                return Column(
+                  children: [
+                    if (provider.isLoadingMore)
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.only(top: 8, bottom: 8),
+                        itemCount: provider.messages.length,
+                        itemBuilder: (context, index) {
+                          final message = provider.messages[index];
+                          // Determine if message is from current user
+                          final isMe = message.senderId == provider.myUserId;
 
-                    final message = provider.messages[index];
-                    // Determine if message is from current user
-                    final isMe = message.senderId == provider.myUserId;
-
-                    return MessageBubble(
-                      message: message,
-                      isMe: isMe,
-                      showTimestamp: _shouldShowTimestamp(index, provider),
-                    );
-                  },
+                          return MessageBubble(
+                            message: message,
+                            isMe: isMe,
+                            showTimestamp: _shouldShowTimestamp(
+                              index,
+                              provider,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -236,13 +277,16 @@ class _ChatScreenState extends State<ChatScreen> {
                   debugPrint('[CHAT_SCREEN] Sending text message');
                   provider.sendMessage(widget.userId, text);
                 },
-                onSendImage: (file) async {
-                  debugPrint('[CHAT_SCREEN] Sending image');
-                  final success = await provider.sendImage(widget.userId, file);
+                onSendImages: (files) async {
+                  debugPrint('[CHAT_SCREEN] Sending ${files.length} images');
+                  final success = await provider.sendImages(
+                    widget.userId,
+                    files,
+                  );
                   if (!success && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Failed to send image'),
+                        content: Text('Failed to send some images'),
                         backgroundColor: Colors.red,
                       ),
                     );
