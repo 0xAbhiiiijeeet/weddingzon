@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class RequestCard extends StatelessWidget {
   final Map<String, dynamic> request;
@@ -46,7 +47,7 @@ class RequestCard extends StatelessWidget {
               radius: 28,
               backgroundColor: Colors.grey.shade100,
               backgroundImage: profilePhoto.isNotEmpty
-                  ? NetworkImage(profilePhoto)
+                  ? CachedNetworkImageProvider(profilePhoto)
                   : null,
               child: profilePhoto.isEmpty
                   ? Text(

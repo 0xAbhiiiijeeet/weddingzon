@@ -19,6 +19,7 @@ import '../../features/feed/models/feed_user.dart';
 import '../../features/chat/screens/conversations_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/connections/screens/connections_screen.dart';
+import '../../features/connections/screens/my_connections_screen.dart';
 import '../../features/profile/screens/profile_viewers_screen.dart';
 
 import '../../features/splash/screens/splash_screen.dart';
@@ -47,6 +48,7 @@ class AppRoutes {
   static const String conversations = '/chat/conversations';
   static const String chat = '/chat';
   static const String connections = '/connections';
+  static const String myConnections = '/connections/my';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
@@ -76,6 +78,7 @@ class AppRoutes {
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ConnectionsScreen(initialIndex: args?['initialIndex'] ?? 0);
     },
+    myConnections: (_) => const MyConnectionsScreen(),
     editProfile: (_) => const EditProfileScreen(),
     photoManager: (_) => const PhotoManagerScreen(),
     userProfile: (context) {

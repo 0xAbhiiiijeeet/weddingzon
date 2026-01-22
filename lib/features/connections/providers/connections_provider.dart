@@ -9,7 +9,9 @@ class ConnectionsProvider with ChangeNotifier {
 
   // Incoming requests
   List<Map<String, dynamic>> _incomingRequests = [];
+  List<Map<String, dynamic>> _myConnections = [];
   bool _isLoading = false;
+  bool _isLoadingConnections = false;
 
   // Cache for connection statuses per username
   final Map<String, Map<String, String>> _statusCache = {};
@@ -21,7 +23,9 @@ class ConnectionsProvider with ChangeNotifier {
   final Map<String, bool> _cancellingStates = {};
 
   List<Map<String, dynamic>> get incomingRequests => _incomingRequests;
+  List<Map<String, dynamic>> get myConnections => _myConnections;
   bool get isLoading => _isLoading;
+  bool get isLoadingConnections => _isLoadingConnections;
 
   // =====================================================
   // STATUS GETTERS
@@ -348,5 +352,32 @@ class ConnectionsProvider with ChangeNotifier {
     // But for speed, let's try to add if format matches, or reload.
     // Safest is to just reload for now to ensure we have full user details
     loadIncomingRequests();
+  }
+
+  // =====================================================
+  // MY CONNECTIONS
+  // =====================================================
+
+  Future<void> loadMyConnections() async {
+    _isLoadingConnections = true;
+    notifyListeners();
+
+    final response = await _repository.getMyConnections();
+
+    if (response.success && response.data != null) {
+      final rawList = List<Map<String, dynamic>>.from(response.data!);
+      final seenIds = <String>{};
+      _myConnections = rawList
+          .where((u) => seenIds.add(u['_id'] ?? u['username']))
+          .toList();
+    } else {
+      _myConnections = [];
+      Fluttertoast.showToast(
+        msg: response.message ?? 'Failed to load connections',
+      );
+    }
+
+    _isLoadingConnections = false;
+    notifyListeners();
   }
 }

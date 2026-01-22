@@ -37,12 +37,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _loadUserProfile() async {
+  Future<void> _loadUserProfile({bool refresh = false}) async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
+      if (!refresh) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
 
       final apiService = context.read<ApiService>();
       final userRepository = UserRepository(apiService);
@@ -57,6 +59,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         // Fetch connection status
         if (mounted) {
           context.read<ConnectionProvider>().fetchStatus(widget.username);
+          // Record profile view
+          userRepository.recordProfileView(_user!.id);
         }
       } else {
         setState(() {
@@ -111,71 +115,54 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section with Profile Photo and Basic Info
-            _buildHeaderSection(),
+      body: RefreshIndicator(
+        onRefresh: () => _loadUserProfile(refresh: true),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section with Profile Photo and Basic Info
+              _buildHeaderSection(),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Main Content
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  // About Me Section
-                  if (_user!.aboutMe != null && _user!.aboutMe!.isNotEmpty)
-                    _buildSectionCard(
-                      icon: Icons.person_outline,
-                      title: 'About Me',
-                      child: Text(
-                        _user!.aboutMe!,
-                        style: const TextStyle(fontSize: 15, height: 1.5),
+              // Main Content
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    // About Me Section
+                    if (_user!.aboutMe != null && _user!.aboutMe!.isNotEmpty)
+                      _buildSectionCard(
+                        icon: Icons.person_outline,
+                        title: 'About Me',
+                        child: Text(
+                          _user!.aboutMe!,
+                          style: const TextStyle(fontSize: 15, height: 1.5),
+                        ),
                       ),
-                    ),
 
-                  // Photos Section
-                  _buildPhotosSection(),
+                    // Photos Section
+                    _buildPhotosSection(),
 
-                  // Details Sections (Career, Family, Lifestyle, Attributes)
-                  // Show locked state if details access not granted
-                  Consumer<ConnectionProvider>(
-                    builder: (context, connectionProvider, _) {
-                      final detailsStatus = connectionProvider.getDetailsStatus(
-                        widget.username,
-                      );
-                      final hasDetailsAccess =
-                          detailsStatus == 'granted' ||
-                          detailsStatus == 'accepted';
+                    // Details Sections - Always visible
+                    _buildCareerSection(),
+                    _buildFamilySection(),
+                    _buildLifestyleSection(),
+                    _buildAttributesSection(),
 
-                      if (!hasDetailsAccess) {
-                        return _buildDetailsLockedSection(connectionProvider);
-                      }
+                    const SizedBox(height: 24),
 
-                      // Show all details sections if access granted
-                      return Column(
-                        children: [
-                          _buildCareerSection(),
-                          _buildFamilySection(),
-                          _buildLifestyleSection(),
-                          _buildAttributesSection(),
-                        ],
-                      );
-                    },
-                  ),
+                    // Action Buttons
+                    _buildActionButtons(),
 
-                  const SizedBox(height: 24),
-
-                  // Action Buttons
-                  _buildActionButtons(),
-
-                  const SizedBox(height: 32),
-                ],
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -336,254 +323,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget _buildPhotosSection() {
     final photos = _user!.photos;
 
-    return Consumer<ConnectionProvider>(
-      builder: (context, connectionProvider, _) {
-        final photoStatus = connectionProvider.getStatus(widget.username);
-        final hasPhotoAccess =
-            photoStatus == 'granted' || photoStatus == 'accepted';
-
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.photo_library,
-                        size: 20,
-                        color: Colors.deepPurple,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Photos',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (!hasPhotoAccess && photos.isNotEmpty)
-                    _buildRequestAccessButton(connectionProvider),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (photos.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'No photos available',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                )
-              else
-                SizedBox(
-                  height: 200,
-                  child: Stack(
-                    children: [
-                      PageView.builder(
-                        controller: _photoController,
-                        itemCount: photos.length,
-                        itemBuilder: (context, index) {
-                          final photo = photos[index];
-
-                          // NEW LOGIC: Profile photos always visible, others require access
-                          String imageUrl;
-                          bool shouldApplyLocalBlur = false;
-
-                          if (photo.isProfile) {
-                            // Profile photos are ALWAYS visible
-                            imageUrl = photo.url;
-                          } else if (hasPhotoAccess) {
-                            // User has permission - show original
-                            imageUrl = photo.url;
-                          } else {
-                            // User DOESN'T have permission - blur non-profile photos
-                            // ALWAYS use original URL with client-side blur
-                            imageUrl = photo.url;
-                            shouldApplyLocalBlur = true;
-                          }
-
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  InkWell(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ImageViewer(
-                                            photos: photos,
-                                            initialIndex: index,
-                                            hasAccess: hasPhotoAccess,
-                                            canSetProfile: false,
-                                            canDelete: false,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: CachedNetworkImage(
-                                      imageUrl: imageUrl,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => Container(
-                                        color: Colors.grey[200],
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Container(
-                                            color: Colors.grey[200],
-                                            child: const Icon(
-                                              Icons.error,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                    ),
-                                  ),
-                                  // Apply blur overlay only if needed (fallback)
-                                  if (shouldApplyLocalBlur)
-                                    Positioned.fill(
-                                      child: ClipRect(
-                                        child: BackdropFilter(
-                                          filter: ImageFilter.blur(
-                                            sigmaX: 20,
-                                            sigmaY: 20,
-                                          ),
-                                          child: Container(
-                                            color: Colors.black.withOpacity(
-                                              0.5,
-                                            ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.lock,
-                                                size: 40,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      if (photos.length > 1)
-                        Positioned(
-                          bottom: 8,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: SmoothPageIndicator(
-                              controller: _photoController,
-                              count: photos.length,
-                              effect: const WormEffect(
-                                dotHeight: 8,
-                                dotWidth: 8,
-                                activeDotColor: Colors.deepPurple,
-                                dotColor: Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildRequestAccessButton(ConnectionProvider connectionProvider) {
-    final status = connectionProvider.getStatus(widget.username);
-    final isRequesting = connectionProvider.isRequesting(widget.username);
-    final isCancelling = connectionProvider.isCancellingRequest(
-      widget.username,
-    );
-
-    if (status == 'pending') {
-      return OutlinedButton.icon(
-        onPressed: isCancelling
-            ? null
-            : () =>
-                  connectionProvider.cancelPhotoAccessRequest(widget.username),
-        icon: isCancelling
-            ? const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.close, size: 16),
-        label: Text(isCancelling ? 'Cancelling...' : 'Cancel Request'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.red,
-          side: const BorderSide(color: Colors.red),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        ),
-      );
-    }
-
-    return TextButton.icon(
-      onPressed: isRequesting
-          ? null
-          : () => connectionProvider.requestAccess(widget.username),
-      icon: isRequesting
-          ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.lock_open, size: 16),
-      label: Text(isRequesting ? 'Requesting...' : 'Request Access'),
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.deepPurple,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-      ),
-    );
-  }
-
-  Widget _buildDetailsLockedSection(ConnectionProvider connectionProvider) {
-    final detailsStatus = connectionProvider.getDetailsStatus(widget.username);
-    final isRequestingDetails = connectionProvider.isRequestingDetails(
-      widget.username,
-    );
-    final isCancelling = connectionProvider.isCancellingRequest(
-      widget.username,
-    );
+    if (photos.isEmpty) return const SizedBox.shrink();
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -596,100 +341,95 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.lock_outline,
-              size: 40,
-              color: Colors.blue.shade300,
-            ),
+          const Row(
+            children: [
+              Icon(Icons.photo_library, size: 20, color: Colors.deepPurple),
+              SizedBox(width: 8),
+              Text(
+                'Photos',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'Details Locked',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Request access to view this user\'s full\npersonal, family, and lifestyle details.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (detailsStatus == 'pending')
-            OutlinedButton.icon(
-              onPressed: isCancelling
-                  ? null
-                  : () => connectionProvider.cancelDetailsAccessRequest(
-                      widget.username,
-                    ),
-              icon: isCancelling
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.red,
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 200,
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _photoController,
+                  itemCount: photos.length,
+                  itemBuilder: (context, index) {
+                    final photo = photos[index];
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ImageViewer(
+                                  photos: photos,
+                                  initialIndex: index,
+                                  hasAccess: true,
+                                  canSetProfile: false,
+                                  canDelete: false,
+                                ),
+                              ),
+                            );
+                          },
+                          child: CachedNetworkImage(
+                            imageUrl: photo.url,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.error,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    )
-                  : const Icon(Icons.close),
-              label: Text(isCancelling ? 'Cancelling...' : 'Cancel Request'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
+                    );
+                  },
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            )
-          else
-            ElevatedButton.icon(
-              onPressed: isRequestingDetails
-                  ? null
-                  : () => connectionProvider.requestDetailsAccess(
-                      widget.username,
-                    ),
-              icon: isRequestingDetails
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+                if (photos.length > 1)
+                  Positioned(
+                    bottom: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: SmoothPageIndicator(
+                        controller: _photoController,
+                        count: photos.length,
+                        effect: const WormEffect(
+                          dotHeight: 8,
+                          dotWidth: 8,
+                          activeDotColor: Colors.deepPurple,
+                          dotColor: Colors.grey,
+                        ),
                       ),
-                    )
-                  : const Icon(Icons.lock_open),
-              label: Text(
-                isRequestingDetails
-                    ? 'Requesting...'
-                    : 'Request Details Access',
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
     );

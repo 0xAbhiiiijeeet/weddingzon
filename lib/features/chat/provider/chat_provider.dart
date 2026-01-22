@@ -136,8 +136,21 @@ class ChatProvider extends ChangeNotifier {
 
     final index = _conversations.indexWhere((c) => c.userId == otherUserId);
 
+    // Determine if this message should increment unread count
+    final isCurrentChat = _currentChat?.userId == otherUserId;
+
+    debugPrint('[CHAT] Updating conversation for user: $otherUserId');
+    debugPrint('[CHAT] Current chat userId: ${_currentChat?.userId}');
+    debugPrint('[CHAT] Is current chat: $isCurrentChat');
+
     if (index != -1) {
       final existing = _conversations[index];
+      final newUnreadCount = isCurrentChat ? 0 : existing.unreadCount + 1;
+
+      debugPrint(
+        '[CHAT] Existing unread: ${existing.unreadCount}, New unread: $newUnreadCount',
+      );
+
       _conversations[index] = Conversation(
         userId: existing.userId,
         username: existing.username,
@@ -145,9 +158,7 @@ class ChatProvider extends ChangeNotifier {
         lastName: existing.lastName,
         profilePhoto: existing.profilePhoto,
         lastMessage: message.message,
-        unreadCount: _currentChat?.userId == otherUserId
-            ? 0
-            : existing.unreadCount + 1,
+        unreadCount: newUnreadCount,
         updatedAt: message.createdAt,
       );
 
@@ -171,13 +182,16 @@ class ChatProvider extends ChangeNotifier {
           lastName: '',
           profilePhoto: null,
           lastMessage: message.message,
-          unreadCount: 1, // Start with 1 unread
+          unreadCount: isCurrentChat
+              ? 0
+              : 1, // Don't count if currently viewing
           updatedAt: message.createdAt,
         ),
       );
     }
 
     notifyListeners();
+    debugPrint('[CHAT] Total unread count: $totalUnreadCount');
   }
 
   // =====================================================
@@ -279,7 +293,12 @@ class ChatProvider extends ChangeNotifier {
     _currentChatUserId = null;
     _messages = [];
     _typingTimer?.cancel();
+
+    // Important: Notify listeners so badge counts update
+    // This ensures BadgeProvider recalculates the unread count
     notifyListeners();
+
+    debugPrint('[CHAT] Chat closed, badge should update');
   }
 
   // =====================================================

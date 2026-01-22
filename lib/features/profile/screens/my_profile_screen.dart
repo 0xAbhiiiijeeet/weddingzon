@@ -291,6 +291,21 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.myConnections),
+            icon: const Icon(Icons.people),
+            label: const Text('My Connections'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              foregroundColor: Colors.teal,
+              side: const BorderSide(color: Colors.teal),
+            ),
+          ),
+        ),
       ],
     );
   }

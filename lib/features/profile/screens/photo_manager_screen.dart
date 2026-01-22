@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../providers/profile_provider.dart';
+import '../providers/photo_upload_provider.dart';
+import '../models/photo_upload_item.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/models/photo_model.dart';
 import '../../../shared/widgets/image_viewer.dart';
@@ -19,7 +21,47 @@ class PhotoManagerScreen extends StatefulWidget {
 
 class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   final ImagePicker _picker = ImagePicker();
-  bool _isUploading = false;
+  bool _wasUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final uploadProvider = context.read<PhotoUploadProvider>();
+
+    // Clear completed items when entering screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      uploadProvider.clearCompleted();
+    });
+
+    // Listen for upload completion to refresh user data
+    uploadProvider.addListener(_onUploadStateChanged);
+  }
+
+  @override
+  void dispose() {
+    context.read<PhotoUploadProvider>().removeListener(_onUploadStateChanged);
+    super.dispose();
+  }
+
+  void _onUploadStateChanged() {
+    final provider = context.read<PhotoUploadProvider>();
+    final isUploadingNow = provider.queue.any(
+      (i) =>
+          i.status == UploadStatus.pending ||
+          i.status == UploadStatus.uploading,
+    );
+
+    if (_wasUploading && !isUploadingNow) {
+      // Batch finished (transitioned from uploading to not uploading)
+      debugPrint('[PHOTO_MANAGER] Batch upload finished. Refreshing user...');
+      context.read<AuthProvider>().refreshUser().then((_) {
+        // After refresh completes, clear the completed items
+        provider.clearCompleted();
+      });
+    }
+
+    _wasUploading = isUploadingNow;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,16 +75,23 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
           ),
         ],
       ),
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
+      body: Consumer2<AuthProvider, PhotoUploadProvider>(
+        builder: (context, authProvider, uploadProvider, child) {
           final user = authProvider.currentUser;
 
           if (user == null) {
             return const Center(child: Text('Not logged in'));
           }
 
-          final photos = user.photos;
-          final photoCount = photos.length;
+          final serverPhotos = user.photos;
+          final uploadQueue = uploadProvider.queue;
+
+          // Calculate total photos considering valid ones from server + pending/uploading/success from queue
+          // We exclude errors from count as they didn't succeed
+          final validQueueCount = uploadQueue
+              .where((i) => i.status != UploadStatus.error)
+              .length;
+          final totalPhotos = serverPhotos.length + validQueueCount;
 
           return Column(
             children: [
@@ -57,7 +106,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Photos: $photoCount / 10',
+                          'Photos: $totalPhotos / 10',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -65,9 +114,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          photoCount == 0
+                          totalPhotos == 0
                               ? 'Add at least 1 photo'
-                              : 'You can add ${10 - photoCount} more photos',
+                              : 'You can add ${10 - totalPhotos} more photos',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade700,
@@ -75,19 +124,11 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                         ),
                       ],
                     ),
-                    if (photoCount < 10)
+                    if (totalPhotos < 10)
                       ElevatedButton.icon(
-                        onPressed: _isUploading ? null : _pickAndUploadPhotos,
-                        icon: _isUploading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.add_photo_alternate, size: 20),
-                        label: Text(_isUploading ? 'Uploading...' : 'Add'),
+                        onPressed: () => _pickAndUploadPhotos(10 - totalPhotos),
+                        icon: const Icon(Icons.add_photo_alternate, size: 20),
+                        label: const Text('Add'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.deepPurple,
                           foregroundColor: Colors.white,
@@ -99,9 +140,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
 
               // Photos grid
               Expanded(
-                child: photos.isEmpty
+                child: (serverPhotos.isEmpty && uploadQueue.isEmpty)
                     ? _buildEmptyState()
-                    : GridView.builder(
+                    : GridView(
                         padding: const EdgeInsets.all(16),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -110,11 +151,27 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                               mainAxisSpacing: 12,
                               childAspectRatio: 0.75,
                             ),
-                        itemCount: photos.length,
-                        itemBuilder: (context, index) {
-                          final photo = photos[index];
-                          return _buildPhotoCard(photo, index == 0);
-                        },
+                        children: [
+                          // 1. Show Server Photos (Existing)
+                          ...serverPhotos.asMap().entries.map((entry) {
+                            return _buildServerPhotoCard(
+                              entry.value,
+                              entry.key == 0,
+                            );
+                          }),
+
+                          // 2. Show Queue Items (Pending/Uploading/Error)
+                          // Note: Success items in queue might duplicate server photos if we just refreshed user
+                          // Ideally, we should filter out success items if they are already in serverPhotos
+                          // But for simplicity, we rely on the provider clearing completed items or manually handling it.
+                          // Here, we show all queue items to give feedback.
+                          ...uploadQueue.map((item) {
+                            // If item is success, it should eventually be in serverPhotos after referesh.
+                            // We hide it here if we trust it's in serverPhotos, OR we show it until cleared.
+                            // Let's show it to be safe, user can see it "convert" or we clear it.
+                            return _buildUploadCard(item);
+                          }),
+                        ],
                       ),
               ),
             ],
@@ -142,7 +199,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: _pickAndUploadPhotos,
+            onPressed: () => _pickAndUploadPhotos(10),
             icon: const Icon(Icons.add_photo_alternate),
             label: const Text('Add Photos'),
             style: ElevatedButton.styleFrom(
@@ -156,74 +213,14 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     );
   }
 
-  Widget _buildPhotoCard(Photo photo, bool isFirstPhoto) {
+  Widget _buildServerPhotoCard(Photo photo, bool isFirstPhoto) {
     final isProfilePhoto =
         photo.isProfile ||
         (context.read<AuthProvider>().currentUser?.profilePhoto == photo.url);
 
     return InkWell(
       onTap: () {
-        final user = context.read<AuthProvider>().currentUser;
-        if (user == null) return;
-
-        // Create unrestricted copies of photos for the viewer
-        final unrestrictedPhotos = user.photos
-            .map((p) => p.copyWith(restricted: false, isProfile: false))
-            .toList();
-        final currentIndex = unrestrictedPhotos.indexWhere(
-          (p) => p.url == photo.url,
-        );
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ImageViewer(
-              photos: unrestrictedPhotos,
-              initialIndex: currentIndex >= 0 ? currentIndex : 0,
-              hasAccess: true, // User always has access to their own photos
-              canSetProfile: true,
-              canDelete: true,
-              currentProfileImageUrl: user.profilePhoto,
-              onSetAsProfile: (index) async {
-                final photo = user.photos[index];
-                debugPrint(
-                  '[PHOTO_MANAGER] Clicked Set Profile. Index: $index, URL: ${photo.url}',
-                );
-                debugPrint('[PHOTO_MANAGER] Photo publicId: ${photo.publicId}');
-
-                final photoId = photo.publicId;
-                if (photoId != null) {
-                  final success = await _setAsProfilePhoto(photoId);
-                  if (success && mounted) {
-                    Navigator.pop(context);
-                  }
-                } else {
-                  debugPrint(
-                    '[PHOTO_MANAGER] ERROR: publicId is null for photo at index $index',
-                  );
-                  Fluttertoast.showToast(msg: "Error: Cannot identify photo");
-                }
-              },
-              onDelete: (index) async {
-                final photo = user.photos[index];
-                debugPrint('[PHOTO_MANAGER] Clicked Delete. Index: $index');
-
-                final photoId = photo.publicId;
-                if (photoId != null) {
-                  final success = await _deletePhoto(photoId, index);
-                  if (success && mounted) {
-                    Navigator.pop(context);
-                  }
-                } else {
-                  debugPrint(
-                    '[PHOTO_MANAGER] ERROR: publicId is null for photo at index $index',
-                  );
-                  Fluttertoast.showToast(msg: "Error: Cannot identify photo");
-                }
-              },
-            ),
-          ),
-        );
+        _openImageViewer(photo);
       },
       child: FutureBuilder<Map<String, String>>(
         future: _getAuthHeaders(),
@@ -237,31 +234,13 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: CachedNetworkImage(
                   imageUrl: photo.url,
-                  httpHeaders: headers, // Pass auth headers
+                  httpHeaders: headers,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
                     color: Colors.grey.shade300,
                     child: const Center(child: CircularProgressIndicator()),
                   ),
-                  errorWidget: (context, url, error) {
-                    debugPrint('[PHOTO_CARD] Error loading: $url');
-                    debugPrint('[PHOTO_CARD] Error: $error');
-                    return Container(
-                      color: Colors.grey.shade300,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error, color: Colors.red, size: 32),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Failed to load',
-                            style: TextStyle(color: Colors.red, fontSize: 12),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  errorWidget: (context, url, error) => _buildErrorWidget(),
                 ),
               ),
               if (isProfilePhoto)
@@ -294,6 +273,147 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     );
   }
 
+  Widget _buildUploadCard(PhotoUploadItem item) {
+    // If successful, we might want to show the uploaded URL if available,
+    // or just the local file. Local file is faster/smoother.
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Image background
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(item.file, fit: BoxFit.cover),
+        ),
+
+        // Overlay based on status
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.black.withOpacity(0.3),
+          ),
+        ),
+
+        // Status Indicator
+        Center(child: _buildStatusIndicator(item)),
+
+        // Error / Retry actions
+        if (item.status == UploadStatus.error)
+          Positioned(
+            bottom: 8,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                InkWell(
+                  onTap: () =>
+                      context.read<PhotoUploadProvider>().retry(item.id),
+                  child: const CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.refresh, color: Colors.blue, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: () =>
+                      context.read<PhotoUploadProvider>().remove(item.id),
+                  child: const CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.close, color: Colors.red, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStatusIndicator(PhotoUploadItem item) {
+    switch (item.status) {
+      case UploadStatus.pending:
+        return const Icon(Icons.hourglass_empty, color: Colors.white, size: 32);
+      case UploadStatus.uploading:
+        return const CircularProgressIndicator(color: Colors.white);
+      case UploadStatus.success:
+        return const Icon(Icons.check_circle, color: Colors.green, size: 48);
+      case UploadStatus.error:
+        return const Icon(Icons.error, color: Colors.red, size: 48);
+    }
+  }
+
+  Widget _buildErrorWidget() {
+    return Container(
+      color: Colors.grey.shade300,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error, color: Colors.red, size: 32),
+          const SizedBox(height: 8),
+          const Text(
+            'Failed to load',
+            style: TextStyle(color: Colors.red, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openImageViewer(Photo photo) {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    // Create unrestricted copies of photos for the viewer
+    final unrestrictedPhotos = user.photos
+        .map((p) => p.copyWith(restricted: false, isProfile: false))
+        .toList();
+    final currentIndex = unrestrictedPhotos.indexWhere(
+      (p) => p.url == photo.url,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ImageViewer(
+          photos: unrestrictedPhotos,
+          initialIndex: currentIndex >= 0 ? currentIndex : 0,
+          hasAccess: true,
+          canSetProfile: true,
+          canDelete: true,
+          currentProfileImageUrl: user.profilePhoto,
+          onSetAsProfile: (index) async {
+            final photo = user.photos[index];
+            final photoId = photo.publicId;
+            if (photoId != null) {
+              final success = await _setAsProfilePhoto(photoId);
+              if (success && mounted) {
+                Navigator.pop(context);
+              }
+            } else {
+              Fluttertoast.showToast(msg: "Error: Cannot identify photo");
+            }
+          },
+          onDelete: (index) async {
+            final photo = user.photos[index];
+            final photoId = photo.publicId;
+            if (photoId != null) {
+              final success = await _deletePhoto(photoId, index);
+              if (success && mounted) {
+                Navigator.pop(context);
+              }
+            } else {
+              Fluttertoast.showToast(msg: "Error: Cannot identify photo");
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   Future<Map<String, String>> _getAuthHeaders() async {
     try {
       final apiService = context.read<ApiService>();
@@ -308,18 +428,12 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   }
 
   Future<bool> _deletePhoto(String photoId, int index) async {
-    debugPrint(
-      '[PHOTO_MANAGER] Requesting delete for photo: $photoId at index $index',
-    );
     final provider = context.read<ProfileProvider>();
     final success = await provider.deletePhoto(photoId);
 
     if (!mounted) return false;
 
     if (success) {
-      debugPrint(
-        '[PHOTO_MANAGER] Photo deleted successfully. Refreshing user...',
-      );
       await context.read<AuthProvider>().refreshUser();
       Fluttertoast.showToast(
         msg: 'Photo deleted',
@@ -327,7 +441,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       );
       return true;
     } else {
-      debugPrint('[PHOTO_MANAGER] Failed to delete photo');
       Fluttertoast.showToast(
         msg: 'Failed to delete photo',
         backgroundColor: Colors.red,
@@ -336,13 +449,9 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     }
   }
 
-  Future<void> _pickAndUploadPhotos() async {
+  Future<void> _pickAndUploadPhotos(int maxPhotos) async {
     try {
-      final authProvider = context.read<AuthProvider>();
-      final currentPhotoCount = authProvider.currentUser?.photos.length ?? 0;
-      final remainingSlots = 10 - currentPhotoCount;
-
-      if (remainingSlots <= 0) {
+      if (maxPhotos <= 0) {
         Fluttertoast.showToast(
           msg: 'Maximum 10 photos allowed',
           backgroundColor: Colors.orange,
@@ -354,71 +463,64 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
         maxWidth: 1920,
         maxHeight: 1920,
         imageQuality: 85,
+        limit: maxPhotos,
       );
 
       if (pickedFiles.isEmpty) return;
 
-      final filesToUpload = pickedFiles.take(remainingSlots).toList();
+      final filesToUpload = pickedFiles.take(maxPhotos).toList();
       if (filesToUpload.length < pickedFiles.length) {
         Fluttertoast.showToast(
-          msg:
-              'Only ${filesToUpload.length} photos will be uploaded (max 10 total)',
+          msg: 'Only ${filesToUpload.length} photos added (limit reached)',
           backgroundColor: Colors.orange,
         );
       }
 
-      setState(() => _isUploading = true);
-
       final files = filesToUpload.map((xFile) => File(xFile.path)).toList();
-      final provider = context.read<ProfileProvider>();
-      final response = await provider.uploadPhotos(files);
 
-      if (!mounted) return;
+      if (mounted) {
+        context.read<PhotoUploadProvider>().addFiles(files);
 
-      if (response.success) {
-        await context.read<AuthProvider>().refreshUser();
+        // Listen for queue completion to refresh user
+        // Or rely on user manually refreshing or generic stream?
+        // Optimally, when queue is empty or success, we trigger user refresh.
+        // For now, let's just trigger a one-time refresh after a short delay or rely on the fact
+        // that once upload succeeds, we might want to refresh user data to get the new URLs from backend cleanly.
+        // Actually, PhotoUploadProvider logic doesn't refresh AuthProvider. Let's do it here or in provider.
+        // Better in UI to react to changes.
 
-        Color toastColor = Colors.green;
-        if (response.errors != null && response.errors!.isNotEmpty) {
-          toastColor = Colors.orange;
-        }
+        // We can add a listener to provider, but that's complex in this method.
+        // The simplest is: when an item succeeds, the user might want fresh data.
+        // But `PhotoUploadProvider` doesn't know about `AuthProvider`.
+        // Let's hook into the build method or let the user pull to refresh if needed.
+        // However, to make it seamless, let's periodically check or rely on upload provider to notify us?
+        // NO, let's update `PhotoUploadProvider` to accept `AuthProvider` callback or similar?
+        // Too coupled.
 
-        Fluttertoast.showToast(
-          msg:
-              response.message ??
-              '${files.length} photo(s) uploaded successfully',
-          backgroundColor: toastColor,
-          toastLength: Toast.LENGTH_LONG,
-        );
-      } else {
-        Fluttertoast.showToast(
-          msg: response.message ?? 'Failed to upload photos',
-          backgroundColor: Colors.red,
-          toastLength: Toast.LENGTH_LONG,
-        );
+        // Alternative: In `_uploadPhotos` inside provider, after success, we just have local data.
+        // The `AuthProvider` needs to be refreshed to get the canonical server state eventually.
+        // Let's rely on basic flow:
+        // 1. Upload finishes.
+        // 2. User sees success checkmark.
+        // 3. We can trigger a user refresh when the queue becomes empty of pending items?
+        // Let's adding a listener in initState.
       }
     } catch (e) {
       debugPrint('[PHOTO_MANAGER] Error picking/uploading: $e');
       Fluttertoast.showToast(
-        msg: 'Error uploading photos',
+        msg: 'Error picking photos',
         backgroundColor: Colors.red,
       );
-    } finally {
-      if (mounted) {
-        setState(() => _isUploading = false);
-      }
     }
   }
 
   Future<bool> _setAsProfilePhoto(String photoId) async {
-    debugPrint('[PHOTO_MANAGER] Requesting set as profile for: $photoId');
     final provider = context.read<ProfileProvider>();
     final success = await provider.setProfilePhoto(photoId);
 
     if (!mounted) return false;
 
     if (success) {
-      debugPrint('[PHOTO_MANAGER] Profile photo updated. Refreshing user...');
       await context.read<AuthProvider>().refreshUser();
       Fluttertoast.showToast(
         msg: 'Profile photo updated',
@@ -426,7 +528,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       );
       return true;
     } else {
-      debugPrint('[PHOTO_MANAGER] Failed to update profile photo');
       Fluttertoast.showToast(
         msg: 'Failed to update profile photo',
         backgroundColor: Colors.red,

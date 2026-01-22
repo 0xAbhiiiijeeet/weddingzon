@@ -71,6 +71,11 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
             currentUser.username,
           );
         }
+
+        // Pre-populate existing data if profile is incomplete
+        if (currentUser.isProfileComplete == false) {
+          context.read<OnboardingProvider>().prepopulateFromUser(currentUser);
+        }
       }
     });
   }

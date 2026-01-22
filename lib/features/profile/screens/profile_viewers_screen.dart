@@ -101,90 +101,114 @@ class _ProfileViewersScreenState extends State<ProfileViewersScreen> {
             itemCount: viewers.length,
             itemBuilder: (context, index) {
               final viewer = viewers[index];
+
+              // Handle deleted accounts
+              final username = viewer.username.trim();
+              final isDeleted = username.isEmpty || username == 'deleted_user';
+              final displayName = isDeleted ? 'Deleted User' : username;
+
               return Card(
                 elevation: 1,
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => _navigateToProfile(viewer.username),
-                        child: CircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.grey.shade200,
-                          backgroundImage: viewer.profilePhoto.isNotEmpty
-                              ? CachedNetworkImageProvider(viewer.profilePhoto)
-                              : null,
-                          child: viewer.profilePhoto.isEmpty
-                              ? const Icon(Icons.person, color: Colors.grey)
-                              : null,
+                child: Opacity(
+                  opacity: isDeleted ? 0.6 : 1.0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: isDeleted
+                              ? null
+                              : () => _navigateToProfile(username),
+                          child: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage: viewer.profilePhoto.isNotEmpty
+                                ? CachedNetworkImageProvider(
+                                    viewer.profilePhoto,
+                                  )
+                                : null,
+                            child: viewer.profilePhoto.isEmpty
+                                ? const Icon(Icons.person, color: Colors.grey)
+                                : null,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              viewer
-                                  .username, // Assuming response has username, usually it might have fullName too
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.indigo,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: Colors.grey.shade500,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDeleted
+                                      ? Colors.grey
+                                      : Colors.indigo,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  DateFormat(
-                                    'MMM d, h:mm a',
-                                  ).format(viewer.viewedAt.toLocal()),
-                                  style: TextStyle(
-                                    fontSize: 12,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 14,
                                     color: Colors.grey.shade500,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    DateFormat(
+                                      'MMM d, h:mm a',
+                                    ).format(viewer.viewedAt.toLocal()),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: isDeleted
+                              ? null
+                              : () => _navigateToProfile(username),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDeleted
+                                ? Colors.grey.shade200
+                                : Colors.pink.shade50,
+                            foregroundColor: isDeleted
+                                ? Colors.grey
+                                : Colors.pink,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: isDeleted
+                                    ? Colors.grey.shade300
+                                    : Colors.pink.shade100,
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => _navigateToProfile(viewer.username),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink.shade50,
-                          foregroundColor: Colors.pink,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: Colors.pink.shade100),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                          child: Text(
+                            isDeleted ? 'Unavailable' : 'View Profile',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        child: const Text(
-                          'View Profile',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -196,8 +220,18 @@ class _ProfileViewersScreenState extends State<ProfileViewersScreen> {
   }
 
   void _navigateToProfile(String username) {
-    if (username.isNotEmpty) {
-      Navigator.pushNamed(context, AppRoutes.userProfile, arguments: username);
+    // Guard against empty, null, or deleted account usernames
+    if (username.isEmpty || username == 'deleted_user') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This account is no longer available'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
     }
+
+    Navigator.pushNamed(context, AppRoutes.userProfile, arguments: username);
   }
 }

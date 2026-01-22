@@ -27,12 +27,14 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
+  ChatProvider? _chatProvider;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<ChatProvider>();
+      _chatProvider = provider; // Save reference for dispose
       final displayName = _getDisplayName();
 
       provider.openChat(
@@ -81,16 +83,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    // Reset current chat in provider so badges update correctly
-    if (mounted) {
-      context.read<ChatProvider>().closeChat();
-    } else {
-      // If not mounted (unlikely for dispose but possible if tree is being torn down),
-      // we might not get context. But Provider might still be alive.
-      // However, we can't access context easily if unmounted in some cases.
-      // Actually, context is available in State dispose.
-      context.read<ChatProvider>().closeChat();
-    }
+    // Use saved reference to avoid accessing context of deactivated widget
+    _chatProvider?.closeChat();
     _scrollController.dispose();
     super.dispose();
   }
