@@ -39,6 +39,7 @@ class AppConstants {
 
   static const String connectionsRequests = '/connections/requests';
   static const String connectionsMyConnections = '/connections/my-connections';
+  static const String connectionsNotifications = '/connections/notifications';
 
   static const String connectionsStatus = '/connections/status';
 

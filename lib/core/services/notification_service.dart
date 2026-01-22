@@ -219,7 +219,39 @@ class NotificationService {
         AppRoutes.connections,
         arguments: {'initialIndex': 0}, // 0 = Invites tab
       );
+    } else if (type == 'photo_access_request') {
+      debugPrint(
+        '[NOTIFICATION] Routing to Invites tab for photo access request',
+      );
+      _navigationService.pushNamedAndRemoveUntil(
+        AppRoutes.connections,
+        arguments: {'initialIndex': 0}, // 0 = Invites tab
+      );
+    } else if (type == 'details_access_request') {
+      debugPrint(
+        '[NOTIFICATION] Routing to Invites tab for details access request',
+      );
+      _navigationService.pushNamedAndRemoveUntil(
+        AppRoutes.connections,
+        arguments: {'initialIndex': 0}, // 0 = Invites tab
+      );
     } else if (type == 'request_accepted') {
+      _navigationService.pushNamedAndRemoveUntil(
+        AppRoutes.connections,
+        arguments: {'initialIndex': 1}, // 1 = Notifications tab
+      );
+    } else if (type == 'photo_access_granted') {
+      debugPrint(
+        '[NOTIFICATION] Routing to Notifications tab for photo access granted',
+      );
+      _navigationService.pushNamedAndRemoveUntil(
+        AppRoutes.connections,
+        arguments: {'initialIndex': 1}, // 1 = Notifications tab
+      );
+    } else if (type == 'details_access_granted') {
+      debugPrint(
+        '[NOTIFICATION] Routing to Notifications tab for details access granted',
+      );
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
         arguments: {'initialIndex': 1}, // 1 = Notifications tab

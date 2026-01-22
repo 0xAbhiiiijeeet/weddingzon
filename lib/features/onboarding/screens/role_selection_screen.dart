@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import '../../../core/routes/app_routes.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
@@ -15,7 +16,7 @@ class RoleSelectionScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
             const Text(
-              'I am looking for a match as a...',
+              'I am signing up as ...',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               textAlign: TextAlign.center,
             ),
@@ -27,20 +28,12 @@ class RoleSelectionScreen extends StatelessWidget {
                 mainAxisSpacing: 16,
                 children: [
                   _RoleCard(
-                    icon: Icons.female,
-                    title: 'Bride',
-                    description: 'Looking for a groom',
-                    role: 'bride',
-                    color: Colors.pink,
-                    onTap: () => _selectRole(context, 'bride'),
-                  ),
-                  _RoleCard(
-                    icon: Icons.male,
-                    title: 'Groom',
-                    description: 'Looking for a bride',
-                    role: 'groom',
+                    icon: Icons.people,
+                    title: 'Members',
+                    description: 'Find your partner',
+                    role: 'member',
                     color: Colors.blue,
-                    onTap: () => _selectRole(context, 'groom'),
+                    onTap: () => _selectRole(context, 'member'),
                   ),
                   _RoleCard(
                     icon: Icons.business,
@@ -58,6 +51,14 @@ class RoleSelectionScreen extends StatelessWidget {
                     color: Colors.green,
                     onTap: () => _selectRole(context, 'franchise'),
                   ),
+                  _RoleCard(
+                    icon: Icons.shopping_cart,
+                    title: 'Ecommerce',
+                    description: 'Shop wedding products',
+                    role: 'ecommerce',
+                    color: Colors.purple,
+                    onTap: () => _selectRole(context, 'ecommerce'),
+                  ),
                 ],
               ),
             ),
@@ -70,22 +71,22 @@ class RoleSelectionScreen extends StatelessWidget {
   void _selectRole(BuildContext context, String selection) {
     debugPrint('[ONBOARDING] Selection: $selection');
 
-    // Map bride/groom to 'member' role with appropriate gender
+    if (selection == 'ecommerce') {
+      Fluttertoast.showToast(msg: "Coming Soon");
+      return;
+    }
+
+    // Map member to 'member' role, others stay as-is
     final String role;
-    final String gender;
+    final String gender =
+        ''; // Gender selection will happen in next screen if needed
 
     switch (selection) {
-      case 'bride':
+      case 'member':
         role = 'member';
-        gender = 'Female';
-        break;
-      case 'groom':
-        role = 'member';
-        gender = 'Male';
         break;
       default:
         role = selection; // vendor, franchise stay as-is
-        gender = '';
     }
 
     debugPrint('[ONBOARDING] Mapped to role: $role, gender: $gender');

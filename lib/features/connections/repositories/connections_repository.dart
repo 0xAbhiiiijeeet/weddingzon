@@ -235,6 +235,28 @@ class ConnectionsRepository {
   }
 
   // =====================================================
+  // GET NOTIFICATIONS (Accepted History)
+  // GET /connections/notifications
+  // Response: { success: true, data: [ { _id, type, status, otherUser: {...}, updatedAt } ] }
+  // =====================================================
+  Future<ApiResponse<List<dynamic>>> getNotifications() async {
+    try {
+      final response = await _apiService.dio.get(
+        AppConstants.connectionsNotifications,
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      if (response.statusCode == 200) {
+        return ApiResponse(success: true, data: response.data['data'] ?? []);
+      }
+
+      return _error(response);
+    } on DioException catch (e) {
+      return _dioError(e);
+    }
+  }
+
+  // =====================================================
   // CHECK CONNECTION STATUS
   // GET /connections/status/:username
   // Response: { status: photoAccessStatus, friendStatus: connectionStatus, detailsStatus: detailsAccessStatus }

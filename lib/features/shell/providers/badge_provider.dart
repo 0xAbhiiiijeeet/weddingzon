@@ -70,9 +70,15 @@ class BadgeProvider extends ChangeNotifier {
     debugPrint('[BadgeProvider] Received socket notification: $data');
     final type = data['type'];
 
-    if (type == 'connection_request') {
+    // Route incoming requests to ConnectionsProvider for Invites tab
+    if (type == 'connection_request' ||
+        type == 'photo_access_request' ||
+        type == 'details_access_request') {
+      debugPrint('[BadgeProvider] Routing $type to ConnectionsProvider');
       _connectionsProvider.handleRealTimeRequest(data);
     } else {
+      // Route granted/accepted notifications to NotificationsProvider for Notifications tab
+      debugPrint('[BadgeProvider] Routing $type to NotificationsProvider');
       final model = NotificationModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: data['title'] ?? 'New Notification',

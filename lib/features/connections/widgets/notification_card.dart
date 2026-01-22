@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../notifications/models/notification_model.dart';
-import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class NotificationCard extends StatelessWidget {
   final NotificationModel notification;
@@ -18,7 +18,6 @@ class NotificationCard extends StatelessWidget {
     final typeText = data['type_text'] ?? _getTypeText(notification.type);
 
     final profilePhoto = data['profilePhoto'] ?? '';
-    final date = DateFormat('dd/MM/yyyy').format(notification.timestamp);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -31,9 +30,22 @@ class NotificationCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () {
           final username = data['username'] as String?;
-          if (username != null && username.isNotEmpty) {
-            Navigator.pushNamed(context, '/profile/user', arguments: username);
+
+          // Guard against deleted or invalid accounts
+          if (username == null ||
+              username.isEmpty ||
+              username == 'deleted_user') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('This account is no longer available'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
           }
+
+          Navigator.pushNamed(context, '/profile/user', arguments: username);
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -45,7 +57,7 @@ class NotificationCard extends StatelessWidget {
                 backgroundColor: Colors.grey.shade50,
                 backgroundImage:
                     (profilePhoto != null && profilePhoto.isNotEmpty)
-                    ? NetworkImage(profilePhoto)
+                    ? CachedNetworkImageProvider(profilePhoto)
                     : null,
                 child: (profilePhoto == null || profilePhoto.isEmpty)
                     ? Text(
@@ -86,14 +98,6 @@ class NotificationCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      date,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -111,6 +115,10 @@ class NotificationCard extends StatelessWidget {
     switch (type) {
       case 'request_accepted':
         return 'accepted your';
+      case 'photo_access_granted':
+        return 'granted your';
+      case 'details_access_granted':
+        return 'granted your';
       case 'connection_request':
         return 'sent you a';
       case 'photo_access_request':
@@ -123,13 +131,17 @@ class NotificationCard extends StatelessWidget {
   String _getTypeText(String type) {
     switch (type) {
       case 'request_accepted':
-        return 'Connection Request'; // Or handle specific accepted types
+        return 'connection request';
+      case 'photo_access_granted':
+        return 'photo request';
+      case 'details_access_granted':
+        return 'details request';
       case 'connection_request':
-        return 'Connection Request';
+        return 'connection request';
       case 'photo_access_request':
-        return 'Photo Access';
+        return 'photo access';
       default:
-        return 'Notification';
+        return 'notification';
     }
   }
 }

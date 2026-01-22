@@ -17,6 +17,7 @@ import 'features/explore/repositories/explore_repository.dart';
 import 'features/explore/providers/explore_provider.dart';
 import 'features/profile/repositories/user_repository.dart';
 import 'features/profile/providers/profile_provider.dart';
+import 'features/profile/providers/photo_upload_provider.dart';
 import 'features/connections/providers/connections_provider.dart';
 import 'features/connections/repositories/connections_repository.dart';
 import 'features/notifications/providers/notifications_provider.dart';
@@ -94,6 +95,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ProfileProvider(userRepository)),
         ChangeNotifierProvider(
           create: (_) => ExploreProvider(exploreRepository),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PhotoUploadProvider(userRepository),
         ),
         ChangeNotifierProvider(
           create: (_) =>

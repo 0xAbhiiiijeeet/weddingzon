@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../providers/profile_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/services/location_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -16,6 +17,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
   bool _isInitialized = false;
+  final LocationService _locationService = LocationService();
+  bool _isLoadingLocation = false;
 
   @override
   void initState() {
@@ -279,6 +282,27 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Get My Location Button
+          OutlinedButton.icon(
+            onPressed: _isLoadingLocation
+                ? null
+                : () => _getMyLocation(provider),
+            icon: _isLoadingLocation
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.my_location),
+            label: Text(
+              _isLoadingLocation ? 'Getting Location...' : 'Get My Location',
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           _buildDropdown(
             label: 'Country',
             value: provider.editFormData['country'],
@@ -325,19 +349,78 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               onChanged: (value) => provider.updateEditField('state', value),
             )
           else
-            _buildTextField(
-              label: 'State',
+            TextFormField(
+              key: ValueKey(provider.editFormData['state']),
               initialValue: provider.editFormData['state'],
+              decoration: const InputDecoration(
+                labelText: 'State',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) => provider.updateEditField('state', value),
               onSaved: (value) => provider.updateEditField('state', value),
             ),
-          _buildTextField(
-            label: 'City',
+          TextFormField(
+            key: ValueKey(provider.editFormData['city']),
             initialValue: provider.editFormData['city'],
+            decoration: const InputDecoration(
+              labelText: 'City',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) => provider.updateEditField('city', value),
             onSaved: (value) => provider.updateEditField('city', value),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _getMyLocation(ProfileProvider provider) async {
+    setState(() => _isLoadingLocation = true);
+
+    try {
+      debugPrint('[EDIT_PROFILE] Requesting current location...');
+      final address = await _locationService.getCurrentLocationAddress();
+
+      if (!mounted) return;
+
+      if (address.isEmpty) {
+        debugPrint('[EDIT_PROFILE] ERROR: Location address is empty');
+        Fluttertoast.showToast(
+          msg: 'Could not get location. Please enable location services.',
+          backgroundColor: Colors.red,
+        );
+        return;
+      }
+
+      debugPrint('[EDIT_PROFILE] ========== Location Retrieved ==========');
+      debugPrint('[EDIT_PROFILE] Country: ${address['country'] ?? 'NULL'}');
+      debugPrint('[EDIT_PROFILE] State: ${address['state'] ?? 'NULL'}');
+      debugPrint('[EDIT_PROFILE] City: ${address['city'] ?? 'NULL'}');
+      debugPrint('[EDIT_PROFILE] ==========================================');
+
+      // Update fields
+      if (address['country'] != null) {
+        provider.updateEditField('country', address['country']);
+        debugPrint('[EDIT_PROFILE] Updated country field');
+      }
+      if (address['state'] != null) {
+        provider.updateEditField('state', address['state']);
+        debugPrint('[EDIT_PROFILE] Updated state field');
+      }
+      if (address['city'] != null) {
+        provider.updateEditField('city', address['city']);
+        debugPrint('[EDIT_PROFILE] Updated city field');
+      }
+
+      Fluttertoast.showToast(
+        msg: 'Location populated successfully!',
+        backgroundColor: Colors.green,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
   }
 
   Widget _buildFamilyTab(ProfileProvider provider) {

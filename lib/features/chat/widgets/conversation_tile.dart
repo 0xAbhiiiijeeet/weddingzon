@@ -17,6 +17,18 @@ class ConversationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final hasUnread = conversation.unreadCount > 0;
 
+    // Handle deleted accounts - show fallback name
+    final displayName = conversation.displayName.trim().isEmpty
+        ? (conversation.username.trim().isEmpty
+              ? 'Deleted User'
+              : conversation.username)
+        : conversation.displayName;
+
+    // Show fallback avatar letter
+    final avatarLetter = displayName.isNotEmpty && displayName != 'Deleted User'
+        ? displayName[0].toUpperCase()
+        : '?';
+
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -30,9 +42,7 @@ class ConversationTile extends StatelessWidget {
                 : null,
             child: conversation.profilePhoto == null
                 ? Text(
-                    conversation.displayName.isNotEmpty
-                        ? conversation.displayName[0].toUpperCase()
-                        : '?',
+                    avatarLetter,
                     style: TextStyle(
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,
@@ -45,7 +55,7 @@ class ConversationTile extends StatelessWidget {
         ],
       ),
       title: Text(
-        conversation.displayName,
+        displayName,
         style: TextStyle(
           fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
           fontSize: 16,

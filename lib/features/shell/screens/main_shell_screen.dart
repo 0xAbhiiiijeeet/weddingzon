@@ -34,7 +34,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   final List<Widget> _screens = [
     const FeedScreen(),
     const ExploreScreen(),
-    const MapScreen(), 
+    const MapScreen(),
     const ConversationsScreen(),
     const MyProfileScreen(),
   ];
@@ -119,6 +119,12 @@ class _MainShellScreenState extends State<MainShellScreen>
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+
+    // Refresh data when switching to chat tab
+    if (index == 3) {
+      // Chat tab
+      context.read<ChatProvider>().loadConversations();
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -155,6 +161,11 @@ class _MainShellScreenState extends State<MainShellScreen>
             setState(() {
               _currentIndex = index;
             });
+
+            // Refresh conversations when swiping to chat tab
+            if (index == 3 && mounted) {
+              context.read<ChatProvider>().loadConversations();
+            }
           },
           children: _screens,
         ),

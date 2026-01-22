@@ -2,9 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:provider/provider.dart';
 import '../models/feed_user.dart';
-import '../providers/connection_provider.dart';
 import '../../../shared/widgets/image_viewer.dart';
 
 class ProfileCard extends StatefulWidget {
@@ -184,175 +182,41 @@ class _ProfileCardState extends State<ProfileCard> {
   }
 
   Widget _buildPhotoItem(photo) {
-    return Consumer<ConnectionProvider>(
-      builder: (context, connectionProvider, _) {
-        final photoStatus = connectionProvider.getStatus(widget.user.username);
-        final hasPhotoAccess =
-            photoStatus == 'granted' || photoStatus == 'accepted';
-        final isRequesting = connectionProvider.isRequesting(
-          widget.user.username,
-        );
-
-        String imageUrl;
-        bool shouldApplyLocalBlur = false;
-        bool shouldShowLockOverlay = false;
-
-        if (photo.isProfile) {
-          // Profile photos are ALWAYS visible
-          imageUrl = photo.url;
-        } else if (hasPhotoAccess) {
-          // User has permission - show original
-          imageUrl = photo.url;
-        } else {
-          // User DOESN'T have permission - blur non-profile photos
-          shouldShowLockOverlay = true;
-          // ALWAYS use original URL with client-side blur
-          imageUrl = photo.url;
-          shouldApplyLocalBlur = true;
-
-          debugPrint(
-            'Photo: restricted=${photo.restricted}, hasAccess=$hasPhotoAccess, url=$imageUrl',
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: InkWell(
+        onTap: () {
+          // Find current photo index
+          int currentIndex = widget.user.photos.indexWhere(
+            (p) => p.url == photo.url,
           );
-        }
 
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              InkWell(
-                onTap: () {
-                  // Find current photo index
-                  int currentIndex = widget.user.photos.indexWhere(
-                    (p) => p.url == photo.url,
-                  );
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ImageViewer(
-                        photos: widget.user.photos,
-                        initialIndex: currentIndex >= 0 ? currentIndex : 0,
-                        hasAccess: hasPhotoAccess,
-                        canSetProfile: false,
-                        canDelete: false,
-                      ),
-                    ),
-                  );
-                },
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[300],
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.person,
-                      size: 64,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ImageViewer(
+                photos: widget.user.photos,
+                initialIndex: currentIndex >= 0 ? currentIndex : 0,
+                hasAccess: true,
+                canSetProfile: false,
+                canDelete: false,
               ),
-
-              // Apply client-side blur if needed (fallback)
-              if (shouldApplyLocalBlur)
-                Positioned.fill(
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        color: Colors.black.withOpacity(0.5),
-                        child: const Center(
-                          child: Icon(
-                            Icons.lock,
-                            size: 40,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Request Access Button - only show for non-profile photos without access
-              if (shouldShowLockOverlay)
-                Positioned(
-                  bottom: 16,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: () {
-                      if (photoStatus == 'pending') {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange.shade200),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                color: Colors.orange,
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Request Pending',
-                                style: TextStyle(
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return ElevatedButton.icon(
-                        onPressed: isRequesting
-                            ? null
-                            : () => connectionProvider.requestAccess(
-                                widget.user.username,
-                              ),
-                        icon: isRequesting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.lock_open),
-                        label: Text(
-                          isRequesting ? 'Requesting...' : 'Request Access',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                        ),
-                      );
-                    }(),
-                  ),
-                ),
-            ],
+            ),
+          );
+        },
+        child: CachedNetworkImage(
+          imageUrl: photo.url,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            color: Colors.grey[300],
+            child: const Center(child: CircularProgressIndicator()),
           ),
-        );
-      },
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.person, size: 64, color: Colors.grey),
+          ),
+        ),
+      ),
     );
   }
 

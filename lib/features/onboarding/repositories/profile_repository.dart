@@ -42,4 +42,28 @@ class ProfileRepository {
       );
     }
   }
+
+  Future<ApiResponse<void>> updateLocation(double lat, double lng) async {
+    try {
+      final response = await _apiService.dio.patch(
+        '${AppConstants.users}/location',
+        data: {'latitude': lat, 'longitude': lng},
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      if (response.statusCode == 200) {
+        return ApiResponse(success: true);
+      }
+
+      return ApiResponse(
+        success: false,
+        message: response.data['message'] ?? 'Failed to update location',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(
+        success: false,
+        message: e.response?.data['message'] ?? 'Network error',
+      );
+    }
+  }
 }
