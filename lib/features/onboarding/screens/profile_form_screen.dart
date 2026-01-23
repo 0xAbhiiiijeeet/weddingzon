@@ -4,6 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import '../providers/onboarding_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/services/deep_link_service.dart';
 import '../widgets/basic_details_form.dart';
 import '../widgets/location_form.dart';
 import '../widgets/family_background_form.dart';
@@ -233,16 +234,21 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
           '[PROFILE_FORM] Navigating to Feed (Route: ${AppRoutes.feed})...',
         );
         Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.feed,
-              (route) => false,
-            )
-            .then((_) {
-              debugPrint('[PROFILE_FORM] Navigation Future completed');
-            })
-            .catchError((e) {
-              debugPrint('[PROFILE_FORM] Navigation Error: $e');
-            });
+          context,
+          AppRoutes.feed,
+          (route) => false,
+        );
+
+        // Check for pending deep link after signup completion
+        final deepLinkService = context.read<DeepLinkService>();
+        if (deepLinkService.pendingUsername != null) {
+          debugPrint(
+            '[PROFILE_FORM] Found pending deep link: ${deepLinkService.pendingUsername}',
+          );
+          Future.delayed(const Duration(milliseconds: 500), () {
+            deepLinkService.navigateToPendingProfile();
+          });
+        }
       } else {
         debugPrint('[PROFILE_FORM] Submit failed: ${response.message}');
         Fluttertoast.showToast(

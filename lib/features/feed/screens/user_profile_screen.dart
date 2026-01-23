@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/feed_user.dart';
 import '../providers/connection_provider.dart';
 import '../../../shared/widgets/image_viewer.dart';
@@ -114,6 +115,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareProfile,
+            tooltip: 'Share Profile',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () => _loadUserProfile(refresh: true),
@@ -709,5 +717,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         );
       },
     );
+  }
+
+  void _shareProfile() {
+    final profileUrl =
+        'https://dev.d34g4kpybwb3xb.amplifyapp.com/${_user!.username}';
+    final shareText =
+        'Check out ${_user!.fullName}\'s profile on WeddingZon!\n$profileUrl';
+
+    Share.share(shareText, subject: '${_user!.fullName} - WeddingZon Profile');
   }
 }

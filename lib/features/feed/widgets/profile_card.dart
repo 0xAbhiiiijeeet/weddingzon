@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/feed_user.dart';
 import '../../../shared/widgets/image_viewer.dart';
 
@@ -157,6 +158,23 @@ class _ProfileCardState extends State<ProfileCard> {
             },
           ),
 
+          // Share Button Overlay (Top Right)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.share, color: Colors.white),
+                onPressed: () => _shareProfile(),
+                tooltip: 'Share Profile',
+              ),
+            ),
+          ),
+
           // Dots Indicator
           if (photos.length > 1)
             Positioned(
@@ -231,5 +249,33 @@ class _ProfileCardState extends State<ProfileCard> {
         ),
       ),
     );
+  }
+
+  void _shareProfile() {
+    debugPrint('[Share] ========================================');
+    debugPrint('[Share] ProfileCard: Share button clicked');
+    debugPrint('[Share] User: ${widget.user.fullName}');
+    debugPrint('[Share] Username: ${widget.user.username}');
+    
+    final profileUrl =
+        'https://dev.d34g4kpybwb3xb.amplifyapp.com/${widget.user.username}';
+    final shareText =
+        'Check out ${widget.user.fullName}\'s profile on WeddingZon!\n$profileUrl';
+
+    debugPrint('[Share] Profile URL: $profileUrl');
+    debugPrint('[Share] Share text: $shareText');
+    debugPrint('[Share] Invoking native share...');
+    
+    try {
+      Share.share(
+        shareText,
+        subject: '${widget.user.fullName} - WeddingZon Profile',
+      );
+      debugPrint('[Share] ✅ Share dialog opened successfully');
+    } catch (e, stackTrace) {
+      debugPrint('[Share] ❌ Share failed: $e');
+      debugPrint('[Share] Stack trace: $stackTrace');
+    }
+    debugPrint('[Share] ========================================');
   }
 }

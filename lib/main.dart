@@ -5,6 +5,7 @@ import 'core/services/storage_service.dart';
 import 'shared/widgets/connectivity_wrapper.dart';
 import 'core/services/navigation_service.dart';
 import 'core/services/socket_service.dart';
+import 'core/services/deep_link_service.dart';
 import 'core/routes/app_routes.dart';
 import 'features/auth/repositories/auth_repository.dart';
 import 'features/auth/providers/auth_provider.dart';
@@ -51,6 +52,7 @@ void main() async {
   final chatRepository = ChatRepository(apiService);
   final mapRepository = MapRepository(apiService);
   final socketService = SocketService();
+  final deepLinkService = DeepLinkService(navigationService);
   final notificationService = NotificationService(
     navigationService,
     notificationStorageService,
@@ -67,6 +69,7 @@ void main() async {
         Provider<StorageService>.value(value: storageService),
         Provider<NavigationService>.value(value: navigationService),
         Provider<NotificationService>.value(value: notificationService),
+        Provider<DeepLinkService>.value(value: deepLinkService),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(
             authRepository,
@@ -74,6 +77,7 @@ void main() async {
             socketService,
             notificationService,
             notificationRepository,
+            deepLinkService: deepLinkService,
           ),
         ),
         ChangeNotifierProvider(

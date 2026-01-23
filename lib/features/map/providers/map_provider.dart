@@ -15,6 +15,7 @@ class MapProvider extends ChangeNotifier {
   LatLng? _currentLocation;
   int _radius = 50; // In km
   String? _error;
+  bool _isPermissionDeniedForever = false; // Track permanent denial
 
   // Getters
   List<NearbyUser> get nearbyUsers => _nearbyUsers;
@@ -22,10 +23,12 @@ class MapProvider extends ChangeNotifier {
   LatLng? get currentLocation => _currentLocation;
   int get radius => _radius;
   String? get error => _error;
+  bool get isPermissionDeniedForever => _isPermissionDeniedForever;
 
   Future<void> initLocation() async {
     _isLoading = true;
     _error = null;
+    _isPermissionDeniedForever = false; // Reset flag
     notifyListeners();
 
     try {
@@ -35,7 +38,8 @@ class MapProvider extends ChangeNotifier {
       // Test if location services are enabled.
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _error = 'Location services are disabled.';
+        _error =
+            'Location services are disabled. Please enable location services.';
         _isLoading = false;
         notifyListeners();
         return;
@@ -54,7 +58,8 @@ class MapProvider extends ChangeNotifier {
 
       if (permission == LocationPermission.deniedForever) {
         _error =
-            'Location permissions are permanently denied, we cannot request permissions.';
+            'Location permissions are permanently denied. Please enable them in settings.';
+        _isPermissionDeniedForever = true; // Mark as permanently denied
         _isLoading = false;
         notifyListeners();
         return;

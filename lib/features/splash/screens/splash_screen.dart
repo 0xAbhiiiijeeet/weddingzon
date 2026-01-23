@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../feed/providers/feed_provider.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/services/deep_link_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,14 +24,32 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _init() async {
     final startTime = DateTime.now();
     final authProvider = context.read<AuthProvider>();
+    final deepLinkService = context.read<DeepLinkService>();
 
-    // 1. Check Auth (Fast)
+    // 1. Initialize Deep Link Service FIRST (before auth check)
+    // This is critical for cold start - we need to detect the initial link
+    // BEFORE any routing happens
+    debugPrint('[SPLASH] Step 1: Initializing deep link service...');
+    if (mounted) {
+      // Initialize with isAuthenticated = false, we'll update it after auth check
+      await deepLinkService.initialize(isAuthenticated: false);
+      debugPrint('[SPLASH] Deep link service initialized');
+    } else {
+      debugPrint('[SPLASH] ⚠️ Widget not mounted, skipping deep link init');
+      return;
+    }
+
+    // 2. Check Auth (Fast)
+    debugPrint('[SPLASH] Step 2: Checking auth status...');
     await authProvider.checkAuthStatus(autoRoute: false);
+
+    // 3. Update deep link service with actual auth status
+    deepLinkService.updateAuthStatus(authProvider.isAuthenticated);
 
     if (authProvider.isAuthenticated) {
       debugPrint('[SPLASH] User is authenticated, preloading data...');
 
-      // 2. Preload Data (Feed, etc.) - Fire and forget or wait partially
+      // 3. Preload Data (Feed, etc.) - Fire and forget or wait partially
       // We want to use the remaining time effectively
       final feedProvider = context.read<FeedProvider>();
 
@@ -59,8 +78,40 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
       debugPrint('[SPLASH] Routing to Feed...');
       authProvider.routeCurrentUser();
+
+      // If there's a pending deep link, navigate to it after routing completes
+      if (mounted && deepLinkService.pendingUsername != null) {
+        debugPrint('[SPLASH] ✅ Pending deep link found!');
+        debugPrint(
+          '[SPLASH] Will navigate to: ${deepLinkService.pendingUsername}',
+        );
+        // Small delay to ensure navigation context is available
+        debugPrint('[SPLASH] Waiting 500ms for navigation context...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          debugPrint('[SPLASH] Navigating to pending profile...');
+          deepLinkService.navigateToPendingProfile();
+        } else {
+          debugPrint(
+            '[SPLASH] ⚠️ Widget unmounted, cannot navigate to pending profile',
+          );
+        }
+      } else {
+        debugPrint('[SPLASH] ℹ️ No pending deep link');
+      }
     } else {
       // Not authenticated
+      debugPrint('[SPLASH] User not authenticated');
+
+      // Check if there's a pending deep link
+      if (deepLinkService.pendingUsername != null) {
+        debugPrint('[SPLASH] ⚠️ Deep link detected but user not authenticated');
+        debugPrint(
+          '[SPLASH] Pending username stored: ${deepLinkService.pendingUsername}',
+        );
+        debugPrint('[SPLASH] User will be prompted to login');
+      }
+
       final elapsed = DateTime.now().difference(startTime);
       final minDuration = const Duration(seconds: 2);
       final remaining = minDuration - elapsed;
@@ -70,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       if (!mounted) return;
-      debugPrint('[SPLASH] User not authenticated, going to Landing');
+      debugPrint('[SPLASH] Routing to Landing page');
       Navigator.pushReplacementNamed(context, AppRoutes.landing);
     }
   }

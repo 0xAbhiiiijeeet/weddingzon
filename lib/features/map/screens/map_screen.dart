@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../providers/map_provider.dart';
 import '../../feed/screens/user_profile_screen.dart';
 
@@ -12,19 +13,38 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen>
+    with AutomaticKeepAliveClientMixin {
   final MapController _mapController = MapController();
+
+  @override
+  bool get wantKeepAlive => true; // Keep state alive when switching tabs
 
   @override
   void initState() {
     super.initState();
+    // Initialize location when screen is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MapProvider>().initLocation();
     });
   }
 
+  /// Handle retry button - either re-request permission or open settings
+  Future<void> _handleRetry() async {
+    final provider = context.read<MapProvider>();
+
+    if (provider.isPermissionDeniedForever) {
+      // Open app settings
+      await Geolocator.openAppSettings();
+    } else {
+      // Try to request location again
+      await provider.initLocation();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Scaffold(
       body: Consumer<MapProvider>(
         builder: (context, provider, child) {
@@ -39,11 +59,23 @@ class _MapScreenState extends State<MapScreen> {
                 children: [
                   Icon(Icons.location_off, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  Text(provider.error!),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: Text(provider.error!, textAlign: TextAlign.center),
+                  ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.initLocation(),
-                    child: const Text('Retry'),
+                  ElevatedButton.icon(
+                    onPressed: _handleRetry,
+                    icon: Icon(
+                      provider.isPermissionDeniedForever
+                          ? Icons.settings
+                          : Icons.refresh,
+                    ),
+                    label: Text(
+                      provider.isPermissionDeniedForever
+                          ? 'Open Settings'
+                          : 'Retry',
+                    ),
                   ),
                 ],
               ),

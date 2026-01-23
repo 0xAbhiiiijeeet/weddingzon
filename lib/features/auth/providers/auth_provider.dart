@@ -9,6 +9,7 @@ import '../../../core/services/notification_service.dart';
 import '../../notifications/repositories/notification_repository.dart';
 
 import '../../../core/services/socket_service.dart';
+import '../../../core/services/deep_link_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthRepository _authRepository;
@@ -16,6 +17,7 @@ class AuthProvider with ChangeNotifier {
   final SocketService _socketService;
   final NotificationService _notificationService;
   final NotificationRepository _notificationRepository;
+  final DeepLinkService? _deepLinkService;
 
   User? _currentUser;
   bool _isLoading = false;
@@ -27,8 +29,9 @@ class AuthProvider with ChangeNotifier {
     this._navService,
     this._socketService,
     this._notificationService,
-    this._notificationRepository,
-  );
+    this._notificationRepository, {
+    DeepLinkService? deepLinkService,
+  }) : _deepLinkService = deepLinkService;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -142,6 +145,16 @@ class AuthProvider with ChangeNotifier {
               backgroundColor: Colors.green,
             );
             _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+
+            // Check for pending deep link
+            if (_deepLinkService?.pendingUsername != null) {
+              debugPrint(
+                '[AUTH] Found pending deep link: ${_deepLinkService!.pendingUsername}',
+              );
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _deepLinkService!.navigateToPendingProfile();
+              });
+            }
           } else if (_currentUser!.phoneNumber != null &&
               _currentUser!.phoneNumber!.isNotEmpty) {
             // If mobile number exists, skip mobile signup and go to role selection (or next onboarding step)
@@ -254,6 +267,16 @@ class AuthProvider with ChangeNotifier {
           if (_currentUser!.isProfileComplete) {
             debugPrint('[AUTH] Profile already complete, routing to FEED');
             _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+
+            // Check for pending deep link
+            if (_deepLinkService?.pendingUsername != null) {
+              debugPrint(
+                '[AUTH] Found pending deep link: ${_deepLinkService!.pendingUsername}',
+              );
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _deepLinkService!.navigateToPendingProfile();
+              });
+            }
           } else {
             debugPrint('[AUTH] Profile incomplete, routing to onboarding');
             _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
@@ -315,7 +338,22 @@ class AuthProvider with ChangeNotifier {
       _logMissingFields(user);
     } else {
       debugPrint('[AUTH] Profile complete, routing to FEED');
+
+      // Navigate to feed first
       _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+
+      // Check if there's a pending deep link to navigate to
+      if (_deepLinkService?.pendingUsername != null) {
+        debugPrint(
+          '[AUTH] Found pending deep link: ${_deepLinkService!.pendingUsername}',
+        );
+        debugPrint('[AUTH] Will navigate to profile after feed loads');
+
+        // Navigate to pending profile after a delay to ensure navigation context is ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _deepLinkService!.navigateToPendingProfile();
+        });
+      }
     }
   }
 
@@ -328,6 +366,13 @@ class AuthProvider with ChangeNotifier {
     _currentUser = user;
     _saveUserLocally(user);
     debugPrint('[AUTH] Profile Complete: ${user.isProfileComplete}');
+
+    // Update deep link service auth status
+    if (_deepLinkService != null) {
+      _deepLinkService.updateAuthStatus(true);
+      debugPrint('[AUTH] Updated deep link service: user is authenticated');
+    }
+
     notifyListeners();
   }
 
@@ -341,6 +386,13 @@ class AuthProvider with ChangeNotifier {
 
       // Unregister Notification Token
       await _unregisterNotificationToken();
+
+      // Update deep link service auth status
+      if (_deepLinkService != null) {
+        _deepLinkService.updateAuthStatus(false);
+        _deepLinkService.clearPendingUsername();
+        debugPrint('[AUTH] Updated deep link service: user is logged out');
+      }
 
       await _authRepository.logout();
       await UserStorageService.clearUser();
