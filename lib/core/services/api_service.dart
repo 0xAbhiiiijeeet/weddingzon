@@ -4,6 +4,7 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../constants/app_constants.dart';
+import 'logging_service.dart';
 
 class ApiService {
   late final Dio _dio;
@@ -37,7 +38,6 @@ class ApiService {
     return _dio;
   }
 
-  /// Get cookies as a string for socket authentication
   Future<String> getCookieString([String? url]) async {
     if (_cookieJar == null) return '';
 
@@ -64,8 +64,6 @@ class ApiService {
     }
   }
 
-  /// Extract the access_token from cookies for Socket.IO authentication
-  /// Returns the JWT token value or null if not found
   Future<String?> getAccessTokenFromCookies() async {
     if (_cookieJar == null) {
       debugPrint('[API] Cookie jar not initialized');
@@ -73,7 +71,6 @@ class ApiService {
     }
 
     try {
-      // Use socket URL to ensure we get cookies for the correct domain
       final uri = Uri.parse(AppConstants.socketUrl);
       final cookies = await _cookieJar!.loadForRequest(uri);
 
@@ -82,7 +79,6 @@ class ApiService {
         return null;
       }
 
-      // Find the access_token cookie
       final accessTokenCookie = cookies.firstWhere(
         (cookie) => cookie.name == 'access_token',
         orElse: () => Cookie('', ''),
@@ -104,7 +100,6 @@ class ApiService {
     }
   }
 
-  /// Initialize the API service - MUST be called before using
   Future<void> init() async {
     if (_initialized) return;
 
@@ -122,15 +117,16 @@ class ApiService {
   }
 
   void _setupInterceptors() {
+    final logger = LoggingService();
     _dio.interceptors.add(CookieManager(_cookieJar!));
 
     _dio.interceptors.add(
       LogInterceptor(
-        requestBody: false,
-        responseBody: false,
-        requestHeader: false,
+        requestBody: true,
+        responseBody: true,
+        requestHeader: true,
         responseHeader: false,
-        logPrint: (obj) => debugPrint('[API] $obj'),
+        logPrint: (obj) => logger.logNetwork(obj.toString()),
       ),
     );
 
@@ -138,71 +134,78 @@ class ApiService {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (options.extra['withCredentials'] == true) {
-            debugPrint('[API] withCredentials enabled - cookies will be sent');
+            logger.debug(
+              '[API] withCredentials enabled - cookies will be sent',
+            );
+          }
+
+          try {
+            final token = await getAccessTokenFromCookies();
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          } catch (e) {
           }
 
           final mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
           if (mutatingMethods.contains(options.method.toUpperCase()) &&
               _csrfToken != null) {
             options.headers['X-CSRF-Token'] = _csrfToken;
-            debugPrint('[API] Added X-CSRF-Token header');
+            logger.debug('[API] Added X-CSRF-Token header');
           }
 
           return handler.next(options);
         },
         onResponse: (response, handler) async {
-          debugPrint('[API] ========== RESPONSE ==========');
-          debugPrint('[API] Status: ${response.statusCode}');
+          logger.logNetwork('[API] ========== RESPONSE ==========');
+          logger.logNetwork('[API] Status: ${response.statusCode}');
 
           final cookies = response.headers['set-cookie'];
           if (cookies != null && cookies.isNotEmpty) {
-            debugPrint('[API] Cookies received: ${cookies.length}');
+            logger.debug('[API] Cookies received: ${cookies.length}');
             for (var cookie in cookies) {
               if (cookie.contains('access_token')) {
-                debugPrint('[API] access_token cookie set');
+                logger.debug('[API] access_token cookie set');
               }
               if (cookie.contains('refresh_token')) {
-                debugPrint('[API] refresh_token cookie set');
+                logger.debug('[API] refresh_token cookie set');
               }
               if (cookie.contains('csrf_token')) {
                 final parts = cookie.split(';')[0].split('=');
                 if (parts.length > 1) {
                   _csrfToken = parts[1];
-                  debugPrint('[API] csrf_token extracted');
+                  logger.debug('[API] csrf_token extracted');
                 }
               }
             }
           }
 
-          debugPrint('[API] ==================================');
+          logger.logNetwork('[API] ==================================');
 
-          // Handle 401 Unauthorized or 403 Forbidden - try to refresh token
           if ((response.statusCode == 401 || response.statusCode == 403) &&
-              !_isRefreshing) {
-            debugPrint(
+              !_isRefreshing &&
+              response.requestOptions.extra['_isRetry'] != true) {
+            logger.warning(
               '[API] ${response.statusCode} detected, attempting token refresh...',
             );
             _isRefreshing = true;
 
             try {
-              // Call refresh endpoint with refresh_token cookie
               final refreshResponse = await _dio.post(
                 AppConstants.refreshToken,
                 options: Options(extra: {'withCredentials': true}),
               );
 
               if (refreshResponse.statusCode == 200) {
-                debugPrint('[API] Token refreshed successfully');
+                logger.info('[API] Token refreshed successfully');
                 _isRefreshing = false;
 
-                // Retry the original request
                 final retryResponse = await _retry(response.requestOptions);
                 return handler.resolve(retryResponse);
               }
             } catch (refreshError) {
-              debugPrint('[API] Token refresh failed: $refreshError');
+              logger.error('[API] Token refresh failed: $refreshError');
               _isRefreshing = false;
-              // Let the 401 propagate - user needs to re-login
             }
 
             _isRefreshing = false;
@@ -211,16 +214,16 @@ class ApiService {
           return handler.next(response);
         },
         onError: (DioException e, handler) async {
-          debugPrint('[API] ========== ERROR ==========');
-          debugPrint('[API] Type: ${e.type}');
-          debugPrint('[API] Status Code: ${e.response?.statusCode}');
-          debugPrint('[API] Message: ${e.message}');
-          debugPrint('[API] ===============================');
+          logger.error('[API] ========== ERROR ==========');
+          logger.error('[API] Type: ${e.type}');
+          logger.error('[API] Status Code: ${e.response?.statusCode}');
+          logger.error('[API] Message: ${e.message}');
+          logger.error('[API] ===============================');
 
           if (e.type == DioExceptionType.connectionTimeout ||
               e.type == DioExceptionType.connectionError ||
               e.type == DioExceptionType.unknown) {
-            debugPrint('[API] Network connectivity issue');
+            logger.error('[API] Network connectivity issue');
           }
 
           return handler.next(e);
@@ -229,17 +232,18 @@ class ApiService {
     );
   }
 
-  /// Retry a failed request with fresh credentials
   Future<Response> _retry(RequestOptions requestOptions) async {
-    // Remove the 'Cookie' header to force Dio to load fresh cookies from the jar
     final newHeaders = Map<String, dynamic>.from(requestOptions.headers);
     newHeaders.remove('cookie');
     newHeaders.remove('Cookie');
 
+    final newExtra = Map<String, dynamic>.from(requestOptions.extra);
+    newExtra['_isRetry'] = true;
+
     final options = Options(
       method: requestOptions.method,
       headers: newHeaders,
-      extra: requestOptions.extra,
+      extra: newExtra,
     );
 
     return _dio.request(

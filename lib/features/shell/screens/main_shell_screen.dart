@@ -8,7 +8,9 @@ import '../../profile/screens/my_profile_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../chat/provider/chat_provider.dart';
 import '../../map/screens/map_screen.dart';
+import '../../shop/screens/shop_screen.dart';
 import '../../../core/services/api_service.dart';
+import '../../shop/providers/shop_provider.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../providers/badge_provider.dart';
@@ -31,10 +33,14 @@ class _MainShellScreenState extends State<MainShellScreen>
   late PageController _pageController;
   DateTime? _lastBackPressTime;
 
-  final List<Widget> _screens = [
+  List<Widget> get _screens => [
     const FeedScreen(),
     const ExploreScreen(),
     const MapScreen(),
+    ChangeNotifierProvider(
+      create: (_) => ShopProvider(context.read<ApiService>()),
+      child: const ShopScreen(),
+    ),
     const ConversationsScreen(),
     const MyProfileScreen(),
   ];
@@ -48,7 +54,6 @@ class _MainShellScreenState extends State<MainShellScreen>
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
 
-    // Connect socket for chat after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
       _initializeBadges();
@@ -56,7 +61,6 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   void _initializeBadges() {
-    // Check if context is valid (it should be in postFrame)
     if (!mounted) return;
     context.read<ConnectionsProvider>().loadIncomingRequests();
     context.read<NotificationsProvider>().loadNotifications();
@@ -72,17 +76,14 @@ class _MainShellScreenState extends State<MainShellScreen>
       debugPrint('[SHELL] Initializing chat for user: ${currentUser.id}');
       chatProvider.setCurrentUserId(currentUser.id);
 
-      // Extract the real JWT token from cookies
       final accessToken = await apiService.getAccessTokenFromCookies();
 
       if (accessToken != null && accessToken.isNotEmpty) {
         debugPrint('[SHELL] Using real JWT token for socket authentication');
         debugPrint('[SHELL] Token preview: ${accessToken.substring(0, 20)}...');
 
-        // Connect with the real JWT token
         chatProvider.connectSocket(accessToken);
       } else {
-        // Fallback: Try cookie-based auth (though backend requires token)
         debugPrint(
           '[SHELL] WARNING: Could not extract access_token from cookies',
         );
@@ -98,7 +99,6 @@ class _MainShellScreenState extends State<MainShellScreen>
           );
         }
 
-        // Use fallback (likely to fail based on API requirements)
         chatProvider.connectSocket('cookie-auth', cookieString: cookieString);
       }
     }
@@ -120,9 +120,7 @@ class _MainShellScreenState extends State<MainShellScreen>
       curve: Curves.easeInOut,
     );
 
-    // Refresh data when switching to chat tab
-    if (index == 3) {
-      // Chat tab
+    if (index == 4) {
       context.read<ChatProvider>().loadConversations();
     }
   }
@@ -137,9 +135,9 @@ class _MainShellScreenState extends State<MainShellScreen>
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
-      return false; // Don't exit
+      return false;
     }
-    return true; // Exit app
+    return true;
   }
 
   @override
@@ -162,8 +160,7 @@ class _MainShellScreenState extends State<MainShellScreen>
               _currentIndex = index;
             });
 
-            // Refresh conversations when swiping to chat tab
-            if (index == 3 && mounted) {
+            if (index == 4 && mounted) {
               context.read<ChatProvider>().loadConversations();
             }
           },
@@ -192,6 +189,11 @@ class _MainShellScreenState extends State<MainShellScreen>
                   icon: Icon(Icons.map_outlined),
                   activeIcon: Icon(Icons.map),
                   label: 'Map',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.shopping_bag_outlined),
+                  activeIcon: Icon(Icons.shopping_bag),
+                  label: 'Shop',
                 ),
                 BottomNavigationBarItem(
                   icon: NotificationBadge(

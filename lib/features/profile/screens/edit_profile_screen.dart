@@ -138,7 +138,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             initialValue: provider.editFormData['username'],
             onSaved: (value) => provider.updateEditField('username', value),
             helperText: 'Unique ID for your profile URL (Cannot be changed)',
-            enabled: false, // Username cannot be edited
+            enabled: false,
           ),
           _buildTextField(
             label: 'First Name',
@@ -157,7 +157,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             value: provider.editFormData['dob'],
             onChanged: (value) => provider.updateEditField('dob', value),
           ),
-          // Age (Read-only)
           _buildTextField(
             label: 'Age',
             initialValue: provider.editFormData['dob'] != null
@@ -237,7 +236,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             items: const ['None', 'Physical', 'Mental', 'Other'],
             onChanged: (value) => provider.updateEditField('disability', value),
           ),
-          // Conditional disability description
           if (provider.editFormData['disability'] != null &&
               provider.editFormData['disability'] != 'None')
             _buildTextField(
@@ -282,7 +280,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Get My Location Button
           OutlinedButton.icon(
             onPressed: _isLoadingLocation
                 ? null
@@ -366,12 +363,73 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               labelText: 'City',
               border: OutlineInputBorder(),
             ),
-            onChanged: (value) => provider.updateEditField('city', value),
+            onChanged: (value) {
+              provider.updateEditField('city', value);
+              _debounceGeocode(
+                value,
+                provider.editFormData['pincode'],
+                provider,
+              );
+            },
             onSaved: (value) => provider.updateEditField('city', value),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            key: ValueKey(provider.editFormData['pincode']),
+            initialValue: provider.editFormData['pincode'],
+            decoration: const InputDecoration(
+              labelText: 'Pincode',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+            onChanged: (value) {
+              provider.updateEditField('pincode', value);
+              _debounceGeocode(provider.editFormData['city'], value, provider);
+            },
+            onSaved: (value) => provider.updateEditField('pincode', value),
           ),
         ],
       ),
     );
+  }
+
+  DateTime? _lastTypingTime;
+
+  Future<void> _debounceGeocode(
+    String? city,
+    String? pincode,
+    ProfileProvider provider,
+  ) async {
+    _lastTypingTime = DateTime.now();
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    if (_lastTypingTime != null &&
+        DateTime.now().difference(_lastTypingTime!) <
+            const Duration(milliseconds: 1000)) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    final query = [
+      city,
+      pincode,
+    ].where((s) => s != null && s.isNotEmpty).join(', ');
+
+    if (query.length < 4) return;
+
+    try {
+      final position = await _locationService.getCoordinatesFromAddress(query);
+      if (position != null && mounted) {
+        provider.updateEditField('latitude', position.latitude);
+        provider.updateEditField('longitude', position.longitude);
+        debugPrint(
+          '[EDIT_PROFILE] Geocoded "$query" -> ${position.latitude}, ${position.longitude}',
+        );
+      }
+    } catch (e) {
+      debugPrint('[EDIT_PROFILE] Geocode error: $e');
+    }
   }
 
   Future<void> _getMyLocation(ProfileProvider provider) async {
@@ -398,7 +456,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       debugPrint('[EDIT_PROFILE] City: ${address['city'] ?? 'NULL'}');
       debugPrint('[EDIT_PROFILE] ==========================================');
 
-      // Update fields
       if (address['country'] != null) {
         provider.updateEditField('country', address['country']);
         debugPrint('[EDIT_PROFILE] Updated country field');
@@ -410,6 +467,22 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       if (address['city'] != null) {
         provider.updateEditField('city', address['city']);
         debugPrint('[EDIT_PROFILE] Updated city field');
+      }
+      if (address['postal_code'] != null) {
+        provider.updateEditField('pincode', address['postal_code']);
+        debugPrint('[EDIT_PROFILE] Updated pincode field');
+      }
+
+
+      final fullAddress = [
+        address['city'],
+        address['state'],
+        address['country'],
+        address['postal_code'],
+      ].where((e) => e != null).join(', ');
+
+      if (fullAddress.isNotEmpty) {
+        _debounceGeocode(address['city'], address['postal_code'], provider);
       }
 
       Fluttertoast.showToast(
@@ -724,7 +797,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Read-only phone (from auth)
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: TextFormField(
@@ -738,7 +810,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               enabled: false,
             ),
           ),
-          // Read-only email (from auth)
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: TextFormField(
@@ -846,7 +917,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     required Function(String?) onChanged,
     bool required = false,
   }) {
-    // Ensure value is in items list, otherwise set to null
     final validValue = (value != null && items.contains(value)) ? value : null;
 
     return Padding(
@@ -887,7 +957,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         ),
         controller: TextEditingController(
           text: value != null && value.isNotEmpty
-              ? value.split('T')[0] // Display only date part
+              ? value.split('T')[0]
               : '',
         ),
         onTap: () async {
@@ -937,7 +1007,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     if (!mounted) return;
 
     if (response.success && response.data != null) {
-      // Refresh user from server to ensure we get signed URLs and complete data
       await context.read<AuthProvider>().refreshUser();
 
       Fluttertoast.showToast(

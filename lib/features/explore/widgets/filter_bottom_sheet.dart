@@ -15,20 +15,16 @@ class FilterBottomSheet extends StatefulWidget {
 }
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
-  // Basic Filters
   String? _sortBy;
   RangeValues _ageRange = const RangeValues(18, 60);
 
-  // Location
   String? _country;
   String? _state;
   String? _city;
 
-  // Personal
   String? _maritalStatus;
   String? _minHeight;
 
-  // Cultural & Family
   String? _religion;
   String? _community;
   String? _motherTongue;
@@ -36,16 +32,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   int? _brothers;
   int? _sisters;
 
-  // Professional
   String? _education;
   String? _occupation;
   String? _income;
 
-  // Lifestyle
   String? _diet;
   String? _smoking;
 
-  // Property & Assets
   RangeValues _landAreaRange = const RangeValues(0, 100);
   String? _propertyType;
 
@@ -59,7 +52,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     if (widget.initialFilters != null) {
       final filters = widget.initialFilters!;
 
-      // Convert 'created_at' back to 'newest' for UI
       _sortBy = filters['sortBy'] == 'created_at'
           ? 'newest'
           : filters['sortBy'];
@@ -72,7 +64,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       _state = filters['state'];
       _city = filters['city'];
 
-      // Handle both snake_case (from backend) and camelCase (legacy)
       _maritalStatus = filters['marital_status'] ?? filters['maritalStatus'];
       _minHeight = filters['minHeight']?.toString();
 
@@ -112,7 +103,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           ),
           child: Column(
             children: [
-              // Header
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -134,7 +124,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const Divider(height: 1),
 
-              // Filter Sections
               Expanded(
                 child: ListView(
                   controller: scrollController,
@@ -151,7 +140,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 ),
               ),
 
-              // Action Buttons
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -211,7 +199,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Sort By
               const Text('Sort By', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -242,7 +229,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Age Range
               Text(
                 'Age Range: ${_ageRange.start.round()} - ${_ageRange.end.round()} years',
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -280,7 +266,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Country
               const Text('Country', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -312,7 +297,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // State (India dropdown or text field)
               const Text('State', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               if (isIndia)
@@ -341,7 +325,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       value: 'Tamil Nadu',
                       child: Text('Tamil Nadu'),
                     ),
-                    // Add more states as needed
                   ],
                   onChanged: (value) => setState(() => _state = value),
                 )
@@ -357,7 +340,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 ),
               const SizedBox(height: 16),
 
-              // City
               const Text('City', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               TextField(
@@ -389,7 +371,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Marital Status
               const Text('Marital Status', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               Wrap(
@@ -421,7 +402,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Min Height
               const Text('Minimum Height', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -477,7 +457,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Religion
               const Text('Religion', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               Wrap(
@@ -512,7 +491,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Community
               const Text(
                 'Community / Caste (Optional)',
                 style: TextStyle(fontSize: 14),
@@ -529,7 +507,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Mother Tongue
               const Text('Mother Tongue', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -564,7 +541,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Family Type
               const Text('Family Type', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               Wrap(
@@ -585,7 +561,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Brothers/Sisters
               Row(
                 children: [
                   Expanded(
@@ -670,7 +645,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Education
               const Text('Highest Education', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -701,7 +675,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Occupation
               const Text(
                 'Occupation (Optional)',
                 style: TextStyle(fontSize: 14),
@@ -719,7 +692,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Income
               const Text('Annual Income', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -769,7 +741,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Diet
               const Text(
                 'Diet / Eating Habits',
                 style: TextStyle(fontSize: 14),
@@ -797,7 +768,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Smoking
               const Text('Smoking', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               Wrap(
@@ -835,7 +805,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Land Area
               Text(
                 'Land Area: ${_landAreaRange.start.round()} - ${_landAreaRange.end.round()} acres',
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -854,7 +823,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Property Type
               const Text('Property Type', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               Wrap(
@@ -913,7 +881,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   void _applyFilters() {
     final filters = <String, dynamic>{};
 
-    // Basic - Convert sortBy values to match backend
     if (_sortBy != null) {
       filters['sortBy'] = _sortBy == 'newest' ? 'created_at' : _sortBy;
     }
@@ -922,38 +889,29 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       filters['maxAge'] = _ageRange.end.round();
     }
 
-    // Location
     if (_country != null) filters['country'] = _country;
     if (_state != null) filters['state'] = _state;
     if (_city != null) filters['city'] = _city;
 
-    // Personal - Convert to snake_case and handle height conversion
     if (_maritalStatus != null) filters['marital_status'] = _maritalStatus;
     if (_minHeight != null) {
-      // Convert feet/inches to cm (backend expects cm)
       final heightInCm = _convertHeightToCm(_minHeight!);
       if (heightInCm != null) filters['minHeight'] = heightInCm;
     }
 
-    // Cultural - Convert to snake_case
     if (_religion != null) filters['religion'] = _religion;
     if (_community != null) filters['community'] = _community;
     if (_motherTongue != null) filters['mother_tongue'] = _motherTongue;
-    // Note: family_type not in API docs - commenting out
-    // if (_familyType != null) filters['family_type'] = _familyType;
     if (_brothers != null) filters['brothers'] = _brothers;
     if (_sisters != null) filters['sisters'] = _sisters;
 
-    // Professional - Convert to snake_case
     if (_education != null) filters['highest_education'] = _education;
     if (_occupation != null) filters['occupation'] = _occupation;
     if (_income != null) filters['annual_income'] = _income;
 
-    // Lifestyle - Convert to snake_case
     if (_diet != null) filters['eating_habits'] = _diet;
     if (_smoking != null) filters['smoking_habits'] = _smoking;
 
-    // Property
     if (_landAreaRange.start != 0 || _landAreaRange.end != 100) {
       filters['minLandArea'] = _landAreaRange.start.round();
       filters['maxLandArea'] = _landAreaRange.end.round();
@@ -965,10 +923,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     Navigator.pop(context);
   }
 
-  // Helper to convert height from feet'inches" format to cm
   int? _convertHeightToCm(String height) {
     try {
-      // Parse formats like "5'6"" or "5'6\""
       final cleaned = height.replaceAll('"', '').replaceAll('"', '');
       final parts = cleaned.split("'");
 
@@ -976,7 +932,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         final feet = int.tryParse(parts[0]) ?? 0;
         final inches = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
 
-        // Convert to cm: 1 foot = 30.48 cm, 1 inch = 2.54 cm
         final totalCm = (feet * 30.48) + (inches * 2.54);
         return totalCm.round();
       }

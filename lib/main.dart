@@ -26,11 +26,17 @@ import 'features/chat/repository/chat_repository.dart';
 import 'features/chat/provider/chat_provider.dart';
 import 'features/map/repositories/map_repository.dart';
 import 'features/map/providers/map_provider.dart';
+import 'features/franchise/repositories/franchise_repository.dart';
+import 'features/franchise/providers/franchise_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/notification_storage_service.dart';
 import 'features/notifications/repositories/notification_repository.dart';
 import 'features/shell/providers/badge_provider.dart';
+
+import 'core/services/logging_service.dart';
+import 'core/observers/app_navigation_observer.dart';
+import 'shared/widgets/interaction_logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +44,10 @@ void main() async {
 
   final storageService = StorageService();
   final notificationStorageService = NotificationStorageService();
+
   final apiService = ApiService();
+  final loggingService = LoggingService();
+  loggingService.info('App Started');
 
   await apiService.init();
 
@@ -51,6 +60,7 @@ void main() async {
   final exploreRepository = ExploreRepository(apiService);
   final chatRepository = ChatRepository(apiService);
   final mapRepository = MapRepository(apiService);
+  final franchiseRepository = FranchiseRepository(apiService);
   final socketService = SocketService();
   final deepLinkService = DeepLinkService(navigationService);
   final notificationService = NotificationService(
@@ -59,7 +69,6 @@ void main() async {
   );
   final notificationRepository = NotificationRepository(apiService);
 
-  // Note: Firebase.initializeApp() is called at the start of main
   await notificationService.initialize();
 
   runApp(
@@ -108,7 +117,11 @@ void main() async {
               ChatProvider(chatRepository, socketService, authRepository),
         ),
         ChangeNotifierProvider(create: (_) => MapProvider(mapRepository)),
+        ChangeNotifierProvider(
+          create: (_) => FranchiseProvider(franchiseRepository),
+        ),
         Provider<SocketService>.value(value: socketService),
+        Provider<ProfileRepository>.value(value: onboardingProfileRepository),
         ChangeNotifierProvider(
           create: (context) => BadgeProvider(
             context.read<ChatProvider>(),
@@ -128,20 +141,23 @@ class WeddingZonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ConnectivityWrapper(
-      child: MaterialApp(
-        title: 'WeddingZon',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
+    return InteractionLogger(
+      child: ConnectivityWrapper(
+        child: MaterialApp(
+          title: 'WeddingZon',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+            useMaterial3: true,
+          ),
+          navigatorObservers: [AppNavigationObserver()],
+          navigatorKey: Provider.of<NavigationService>(
+            context,
+            listen: false,
+          ).navigatorKey,
+          initialRoute: AppRoutes.franchiseDashboard,
+          routes: AppRoutes.routes,
         ),
-        navigatorKey: Provider.of<NavigationService>(
-          context,
-          listen: false,
-        ).navigatorKey,
-        initialRoute: AppRoutes.splash,
-        routes: AppRoutes.routes,
       ),
     );
   }

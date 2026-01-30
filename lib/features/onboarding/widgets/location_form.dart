@@ -17,6 +17,41 @@ class _LocationFormState extends State<LocationForm> {
   final LocationService _locationService = LocationService();
   bool _isLoadingLocation = false;
 
+  DateTime? _lastTypingTime;
+
+  Future<void> _debounceGeocode(String? city, String? pincode) async {
+    _lastTypingTime = DateTime.now();
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    if (DateTime.now().difference(_lastTypingTime!) <
+        const Duration(milliseconds: 1000)) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    final query = [
+      city,
+      pincode,
+    ].where((s) => s != null && s.isNotEmpty).join(', ');
+
+    if (query.length < 4) return;
+
+    try {
+      final position = await _locationService.getCoordinatesFromAddress(query);
+      if (position != null && mounted) {
+        final provider = context.read<OnboardingProvider>();
+        provider.updateField('latitude', position.latitude);
+        provider.updateField('longitude', position.longitude);
+        debugPrint(
+          '[LOCATION_FORM] Geocoded "$query" -> ${position.latitude}, ${position.longitude}',
+        );
+      }
+    } catch (e) {
+      debugPrint('[LOCATION_FORM] Geocode error: $e');
+    }
+  }
+
   Future<void> _getMyLocation() async {
     setState(() => _isLoadingLocation = true);
 
@@ -28,14 +63,16 @@ class _LocationFormState extends State<LocationForm> {
 
       if (address.isEmpty) {
         debugPrint('[ONBOARDING_LOCATION] ERROR: Location address is empty');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not get location. Please enable location services.',
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not get location. Please enable location services.',
+              ),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
         return;
       }
 
@@ -53,7 +90,6 @@ class _LocationFormState extends State<LocationForm> {
 
       final provider = context.read<OnboardingProvider>();
 
-      // Update fields
       if (address['country'] != null) {
         provider.updateField('country', address['country']);
         debugPrint('[ONBOARDING_LOCATION] Updated country field');
@@ -67,12 +103,14 @@ class _LocationFormState extends State<LocationForm> {
         debugPrint('[ONBOARDING_LOCATION] Updated city field');
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location populated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location populated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoadingLocation = false);
@@ -97,7 +135,6 @@ class _LocationFormState extends State<LocationForm> {
               ),
               const SizedBox(height: 16),
 
-              // Get My Location Button
               OutlinedButton.icon(
                 onPressed: _isLoadingLocation ? null : _getMyLocation,
                 icon: _isLoadingLocation
@@ -118,9 +155,8 @@ class _LocationFormState extends State<LocationForm> {
               ),
               const SizedBox(height: 24),
 
-              // Rest of the form remains same, reusing existing widgets inside the new stateful widget structure
               DropdownButtonFormField<String>(
-                value: provider.formData['country'],
+                initialValue: provider.formData['country'],
                 decoration: const InputDecoration(
                   labelText: 'Country *',
                   border: OutlineInputBorder(),
@@ -131,7 +167,6 @@ class _LocationFormState extends State<LocationForm> {
                 validator: (v) => v == null ? 'Required' : null,
                 onChanged: (v) {
                   provider.updateField('country', v);
-                  // Clear state when country changes
                   if (v != 'India') {
                     provider.updateField('state', null);
                   }
@@ -142,7 +177,7 @@ class _LocationFormState extends State<LocationForm> {
 
               if (isIndia)
                 DropdownButtonFormField<String>(
-                  value: provider.formData['state'],
+                  initialValue: provider.formData['state'],
                   decoration: const InputDecoration(
                     labelText: 'State *',
                     border: OutlineInputBorder(),
@@ -191,9 +226,6 @@ class _LocationFormState extends State<LocationForm> {
                 )
               else
                 TextFormField(
-                  key: ValueKey(
-                    provider.formData['state'],
-                  ), // Add key to force rebuild if value changes externally
                   initialValue: provider.formData['state'],
                   decoration: const InputDecoration(
                     labelText: 'State *',
@@ -206,17 +238,32 @@ class _LocationFormState extends State<LocationForm> {
               const SizedBox(height: 16),
 
               TextFormField(
-                key: ValueKey(
-                  provider.formData['city'],
-                ), // Add key to force rebuild
                 initialValue: provider.formData['city'],
                 decoration: const InputDecoration(
                   labelText: 'City *',
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                onChanged: (v) => provider.updateField('city', v),
+                onChanged: (v) {
+                  provider.updateField('city', v);
+                  _debounceGeocode(v, provider.formData['pincode']);
+                },
                 onSaved: (v) => provider.updateField('city', v),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                initialValue: provider.formData['pincode'],
+                decoration: const InputDecoration(
+                  labelText: 'Pincode',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (v) {
+                  provider.updateField('pincode', v);
+                  _debounceGeocode(provider.formData['city'], v);
+                },
+                onSaved: (v) => provider.updateField('pincode', v),
               ),
             ],
           );

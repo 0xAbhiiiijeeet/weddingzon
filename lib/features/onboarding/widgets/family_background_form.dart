@@ -1,4 +1,3 @@
-// ignore_for_file: dead_code
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +23,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Father's Occupation/Status*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['father_status'],
             decoration: const InputDecoration(
@@ -43,7 +41,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Mother's Occupation/Status*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['mother_status'],
             decoration: const InputDecoration(
@@ -63,7 +60,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Number of Brothers (0-10)
           TextFormField(
             initialValue: provider.formData['brothers']?.toString() ?? '0',
             decoration: const InputDecoration(
@@ -87,7 +83,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Number of Sisters (0-10)
           TextFormField(
             initialValue: provider.formData['sisters']?.toString() ?? '0',
             decoration: const InputDecoration(
@@ -111,7 +106,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Family Status*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_status'],
             decoration: const InputDecoration(
@@ -130,7 +124,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Family Type*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_type'],
             decoration: const InputDecoration(
@@ -147,7 +140,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Family Values*
           DropdownButtonFormField<String>(
             initialValue: provider.formData['family_values'],
             decoration: const InputDecoration(
@@ -165,7 +157,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Family Annual Income
           DropdownButtonFormField<String>(
             initialValue: provider.formData['annual_income'],
             decoration: const InputDecoration(
@@ -185,7 +176,6 @@ class FamilyBackgroundForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Family Location
           TextFormField(
             initialValue: provider.formData['family_location'],
             decoration: const InputDecoration(

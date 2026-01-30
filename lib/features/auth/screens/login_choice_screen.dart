@@ -42,6 +42,8 @@ class LoginChoiceScreen extends StatelessWidget {
               onPressed: () =>
                   Navigator.pushNamed(context, AppRoutes.mobileLogin),
             ),
+            const SizedBox(height: 16),
+
             const Spacer(),
             Center(
               child: TextButton(

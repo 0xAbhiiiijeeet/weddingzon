@@ -358,7 +358,6 @@ class AuthRepository {
       );
     }
 
-    // Extract and save tokens if present in response
     final accessToken =
         data['accessToken'] ?? data['access_token'] ?? data['token'];
     final refreshToken = data['refreshToken'] ?? data['refresh_token'];
@@ -399,23 +398,18 @@ class AuthRepository {
     );
   }
 
-  // =====================================================
-  // TOKEN REFRESH (With Concurrency Control)
-  // =====================================================
 
   Future<String?>? _refreshTokenFuture;
 
   Future<String?> refreshToken() async {
-    // If a refresh is already in progress, return the existing future
     if (_refreshTokenFuture != null) {
       debugPrint('[AUTH] Refresh already in progress, joining wait...');
       return _refreshTokenFuture;
     }
 
-    // Otherwise, start a new refresh request
     _refreshTokenFuture = _performTokenRefresh();
     final result = await _refreshTokenFuture;
-    _refreshTokenFuture = null; // Reset after completion
+    _refreshTokenFuture = null;
     return result;
   }
 
@@ -423,8 +417,6 @@ class AuthRepository {
     try {
       debugPrint('[AUTH] ========== REFRESHING TOKEN ==========');
 
-      // Get existing refresh token if needed, or rely on cookies
-      // Note: backend likely uses cookies for refresh token, but we check both
 
       final response = await _apiService.dio.post(
         AppConstants.refreshToken,
@@ -441,11 +433,10 @@ class AuthRepository {
 
           if (newAccessToken != null) {
             debugPrint('[AUTH] Token refreshed successfully');
-            // Save new tokens
             await _storageService.saveTokens(
               accessToken: newAccessToken.toString(),
               refreshToken:
-                  '', // usually refresh token rotates too, but if cookie-based, might be auto-handled
+                  '',
             );
             return newAccessToken.toString();
           }
@@ -457,6 +448,45 @@ class AuthRepository {
     } catch (e) {
       debugPrint('[AUTH] Token refresh failed: $e');
       return null;
+    }
+  }
+
+  Future<ApiResponse<User>> mockFranchiseLogin() async {
+    debugPrint('[AUTH] ========== MOCK FRANCHISE LOGIN ==========');
+    await Future.delayed(const Duration(seconds: 1));
+
+    final mockUser = User(
+      id: 'mock_franchise_id_123',
+      email: 'franchise@test.com',
+      username: 'testfranchise',
+      role: 'franchise',
+      phone: '+919876543210',
+      isPhoneVerified: true,
+      isProfileComplete: true,
+      firstName: 'Test',
+      lastName: 'Franchise',
+    );
+
+    return ApiResponse(success: true, data: mockUser);
+  }
+
+  Future<ApiResponse<User>> loginWithPassword(
+    String username,
+    String password,
+  ) async {
+    try {
+      debugPrint('[AUTH] Logging in with password: $username');
+      final response = await _apiService.dio.post(
+        AppConstants.authLogin,
+        data: {'username': username, 'password': password},
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      return _handleStatusCodeAndResponse(response);
+    } on DioException catch (e) {
+      return _handleDioException(e);
+    } catch (e) {
+      return ApiResponse(success: false, message: e.toString());
     }
   }
 }

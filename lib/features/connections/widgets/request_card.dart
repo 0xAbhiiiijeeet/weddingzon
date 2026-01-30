@@ -42,7 +42,6 @@ class RequestCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar
             CircleAvatar(
               radius: 28,
               backgroundColor: Colors.grey.shade100,
@@ -62,16 +61,13 @@ class RequestCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
 
-            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Badge
                   _buildTypeBadge(requestType),
                   const SizedBox(height: 4),
 
-                  // Name
                   Text(
                     displayName,
                     style: const TextStyle(
@@ -84,7 +80,6 @@ class RequestCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
 
-                  // Profession/Details
                   Text(
                     occupation,
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
@@ -96,7 +91,6 @@ class RequestCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
 
-            // Buttons
             Column(
               children: [
                 _buildAcceptButton(),
@@ -117,18 +111,18 @@ class RequestCard extends StatelessWidget {
 
     switch (type.toLowerCase()) {
       case 'connection':
-        bgColor = const Color(0xFFFFEBEE); // Pinkish light
-        textColor = const Color(0xFFE91E63); // Pink
+        bgColor = const Color(0xFFFFEBEE);
+        textColor = const Color(0xFFE91E63);
         text = 'Connection';
         break;
       case 'photo':
-        bgColor = const Color(0xFFE3F2FD); // Blueish light
-        textColor = const Color(0xFF2196F3); // Blue
+        bgColor = const Color(0xFFE3F2FD);
+        textColor = const Color(0xFF2196F3);
         text = 'Photo Access';
         break;
       case 'details':
-        bgColor = const Color(0xFFE3F2FD); // Blueish light
-        textColor = const Color(0xFF2196F3); // Blue
+        bgColor = const Color(0xFFE3F2FD);
+        textColor = const Color(0xFF2196F3);
         text = 'Details Access';
         break;
       default:
@@ -160,7 +154,7 @@ class RequestCard extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onAccept,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFD4AF37), // Gold/Mustard
+          backgroundColor: const Color(0xFFD4AF37),
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 16),

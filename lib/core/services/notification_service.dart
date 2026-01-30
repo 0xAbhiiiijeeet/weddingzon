@@ -9,18 +9,12 @@ import 'navigation_service.dart';
 import 'notification_storage_service.dart';
 import '../../features/notifications/models/notification_model.dart';
 
-/// Top-level function for background messaging
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   debugPrint('[NOTIFICATION] Background message: ${message.messageId}');
 
-  // NOTE: Saving background notifications to local storage might be tricky
-  // because SharedPreferences/FlutterSecureStorage may not be accessible in isolate
-  // without re-initializing dependencies.
-  // For simplicity MVP, we'll focus on foreground/opened.
-  // If needed, we'd initialize NotificationStorageService here too.
 }
 
 class NotificationService {
@@ -89,7 +83,6 @@ class NotificationService {
         '[NOTIFICATION] App opened from terminated: ${initialMessage.data}',
       );
       _saveNotification(initialMessage);
-      // Delay navigation slightly to ensure app is ready
       Future.delayed(const Duration(seconds: 1), () {
         _handleNavigation(initialMessage.data);
       });
@@ -145,8 +138,8 @@ class NotificationService {
       body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          'weddingzon_channel', // id
-          'WeddingZon Notifications', // name
+          'weddingzon_channel',
+          'WeddingZon Notifications',
           channelDescription: 'Notifications for WeddingZon updates',
           importance: Importance.max,
           priority: Priority.high,
@@ -170,7 +163,6 @@ class NotificationService {
     }
   }
 
-  /// Handle notification received via Socket.IO
   Future<void> handleSocketNotification(Map<String, dynamic> data) async {
     debugPrint('[NOTIFICATION] Handling socket notification: $data');
 
@@ -178,10 +170,8 @@ class NotificationService {
     final body = data['body'] ?? '';
     final type = data['type'] ?? 'general';
 
-    // Show local notification
     _showLocalNotification(title: title, body: body, payload: jsonEncode(data));
 
-    // Save to local storage
     final model = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
@@ -217,7 +207,7 @@ class NotificationService {
     if (type == 'connection_request') {
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
-        arguments: {'initialIndex': 0}, // 0 = Invites tab
+        arguments: {'initialIndex': 0},
       );
     } else if (type == 'photo_access_request') {
       debugPrint(
@@ -225,7 +215,7 @@ class NotificationService {
       );
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
-        arguments: {'initialIndex': 0}, // 0 = Invites tab
+        arguments: {'initialIndex': 0},
       );
     } else if (type == 'details_access_request') {
       debugPrint(
@@ -233,12 +223,12 @@ class NotificationService {
       );
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
-        arguments: {'initialIndex': 0}, // 0 = Invites tab
+        arguments: {'initialIndex': 0},
       );
     } else if (type == 'request_accepted') {
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
-        arguments: {'initialIndex': 1}, // 1 = Notifications tab
+        arguments: {'initialIndex': 1},
       );
     } else if (type == 'photo_access_granted') {
       debugPrint(
@@ -246,7 +236,7 @@ class NotificationService {
       );
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
-        arguments: {'initialIndex': 1}, // 1 = Notifications tab
+        arguments: {'initialIndex': 1},
       );
     } else if (type == 'details_access_granted') {
       debugPrint(
@@ -254,11 +244,9 @@ class NotificationService {
       );
       _navigationService.pushNamedAndRemoveUntil(
         AppRoutes.connections,
-        arguments: {'initialIndex': 1}, // 1 = Notifications tab
+        arguments: {'initialIndex': 1},
       );
     } else if (type == 'chat_message') {
-      // Route to conversations list as we might not have full user details for chat screen
-      // Ideally we would fetch user details here then route to chat, but for safety:
       debugPrint(
         '[NOTIFICATION] Routing to conversations screen for chat message',
       );

@@ -9,7 +9,7 @@ class PhotoUploadItem {
   double progress;
   String? errorMessage;
   String? uploadedUrl;
-  String? publicId; // From backend response
+  String? publicId;
 
   PhotoUploadItem({
     required this.id,

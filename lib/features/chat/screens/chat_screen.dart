@@ -34,7 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<ChatProvider>();
-      _chatProvider = provider; // Save reference for dispose
+      _chatProvider = provider;
       final displayName = _getDisplayName();
 
       provider.openChat(
@@ -43,7 +43,6 @@ class _ChatScreenState extends State<ChatScreen> {
         profilePhoto: widget.profilePhoto,
       );
 
-      // Debug socket connection
       debugPrint('[CHAT_SCREEN] Opened chat with ${widget.userId}');
       debugPrint(
         '[CHAT_SCREEN] Socket connected: ${provider.isSocketConnected}',
@@ -56,15 +55,12 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
 
-    // Add scroll listener for pagination
     _scrollController.addListener(_onScroll);
   }
 
   void _onScroll() {
     if (_scrollController.hasClients) {
       final position = _scrollController.position;
-      // If we are near the top (pixels < 100) and scrolling up
-      // Note: In a normal ListView (not reversed), top is 0.0.
       if (position.pixels < 100) {
         final provider = context.read<ChatProvider>();
         if (provider.hasMoreMessages && !provider.isLoadingMore) {
@@ -83,7 +79,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    // Use saved reference to avoid accessing context of deactivated widget
     _chatProvider?.closeChat();
     _scrollController.dispose();
     super.dispose();
@@ -171,16 +166,9 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.more_vert),
-        //     onPressed: null, // TODO: Show options menu
-        //   ),
-        // ],
       ),
       body: Column(
         children: [
-          // Messages list
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (context, provider, _) {
@@ -219,7 +207,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
-                // Auto-scroll when new messages arrive
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _scrollToBottom();
                 });
@@ -242,7 +229,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         itemCount: provider.messages.length,
                         itemBuilder: (context, index) {
                           final message = provider.messages[index];
-                          // Determine if message is from current user
                           final isMe = message.senderId == provider.myUserId;
 
                           return MessageBubble(
@@ -262,7 +248,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Message input
           Consumer<ChatProvider>(
             builder: (context, provider, _) {
               return MessageInput(
@@ -302,7 +287,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final current = provider.messages[index];
     final previous = provider.messages[index - 1];
 
-    // Show timestamp if messages are more than 5 minutes apart
     return current.createdAt.difference(previous.createdAt).inMinutes > 5;
   }
 }

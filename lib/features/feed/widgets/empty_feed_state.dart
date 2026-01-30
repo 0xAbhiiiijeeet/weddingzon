@@ -27,7 +27,6 @@ class EmptyFeedState extends StatelessWidget {
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: () {
-              // Refresh action will be handled by parent
             },
             icon: const Icon(Icons.refresh),
             label: const Text('Refresh'),

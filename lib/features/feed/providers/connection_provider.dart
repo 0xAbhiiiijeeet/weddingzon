@@ -7,14 +7,11 @@ class ConnectionProvider extends ChangeNotifier {
 
   ConnectionProvider(this._repository);
 
-  // Track connection status: username -> status
-  final Map<String, String> _connectionStatuses = {}; // none, pending, accepted
+  final Map<String, String> _connectionStatuses = {};
 
-  // Loading states
   final Set<String> _sendingInterest = {};
   final Set<String> _cancellingRequest = {};
 
-  // Connection/Interest Status (none, pending, accepted)
   String getConnectionStatus(String username) {
     return _connectionStatuses[username] ?? 'none';
   }
@@ -27,7 +24,6 @@ class ConnectionProvider extends ChangeNotifier {
     return _cancellingRequest.contains(username);
   }
 
-  // Send Interest/Connection Request
   Future<void> sendInterest(String username) async {
     if (_sendingInterest.contains(username)) return;
 
@@ -56,7 +52,6 @@ class ConnectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Cancel Connection Request
   Future<void> cancelConnectionRequest(String username) async {
     if (_cancellingRequest.contains(username)) return;
 
@@ -88,7 +83,6 @@ class ConnectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Fetch full connection status from server
   Future<void> fetchStatus(String username) async {
     debugPrint('[CONNECTION] Fetching status for: $username');
 
@@ -105,7 +99,6 @@ class ConnectionProvider extends ChangeNotifier {
     }
   }
 
-  // Update statuses from Feed items
   void updateStatusesFromFeed(List<dynamic> users) {
     bool changed = false;
     for (final user in users) {

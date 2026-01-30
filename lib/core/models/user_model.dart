@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'photo_model.dart';
 
 class User {
@@ -12,7 +13,6 @@ class User {
   final bool isProfileComplete;
   final String? status;
 
-  // Basic Details
   final String? firstName;
   final String? lastName;
   final DateTime? dob;
@@ -26,12 +26,10 @@ class User {
   final String? aadharNumber;
   final String? bloodGroup;
 
-  // Location
   final String? country;
   final String? state;
   final String? city;
 
-  // Family
   final String? fatherStatus;
   final String? motherStatus;
   final int? brothers;
@@ -42,7 +40,6 @@ class User {
   final String? annualIncome;
   final String? familyLocation;
 
-  // Education & Career
   final String? highestEducation;
   final String? educationalDetails;
   final String? occupation;
@@ -51,7 +48,6 @@ class User {
   final String? workingSector;
   final String? workingLocation;
 
-  // Religion & Lifestyle
   final String? religion;
   final String? community;
   final String? subCommunity;
@@ -63,20 +59,27 @@ class User {
   final String? drinkingHabits;
   final List<String> hobbies;
 
-  // Property & Assets
   final double? landArea;
   final String? propertyType;
 
-  // Contact Details
+  final String? franchiseStatus;
+  final Map<String, dynamic>? franchiseDetails;
+
+  final String? vendorStatus;
+  final Map<String, dynamic>? vendorDetails;
+
   final String? alternateMobile;
   final String? suitableTimeToCall;
 
-  // Other
   final String? aboutMe;
   final String? profilePhoto;
   final List<Photo> photos;
 
   User({
+    this.franchiseStatus,
+    this.franchiseDetails,
+    this.vendorStatus,
+    this.vendorDetails,
     required this.id,
     this.username,
     this.email,
@@ -144,11 +147,27 @@ class User {
     return firstName ?? lastName;
   }
 
-  // Aliases for backward compatibility
   String? get name => fullName;
   String? get phoneNumber => phone;
 
   factory User.fromJson(Map<String, dynamic> json) {
+    if (json['_id'] != null) {
+      debugPrint('[USER_MODEL] 🔵 Parsing user: ${json['_id']}');
+      debugPrint('[USER_MODEL] 📸 Raw profile_photo: ${json['profile_photo']}');
+      debugPrint('[USER_MODEL] 📸 Raw profilePhoto: ${json['profilePhoto']}');
+      debugPrint('[USER_MODEL] 📸 Raw photos: ${json['photos']}');
+      debugPrint('[USER_MODEL] 📸 Photos type: ${json['photos'].runtimeType}');
+    }
+
+    final photos =
+        (json['photos'] as List?)?.map((p) {
+          debugPrint('[USER_MODEL] 📷 Parsing photo: $p');
+          return Photo.fromJson(p);
+        }).toList() ??
+        [];
+
+    debugPrint('[USER_MODEL] ✅ Parsed ${photos.length} photos');
+
     return User(
       id: json['_id'] ?? '',
       username: json['username'],
@@ -207,9 +226,11 @@ class User {
       suitableTimeToCall: json['suitable_time_to_call'],
       aboutMe: json['about_me'],
       profilePhoto: json['profile_photo'] ?? json['profilePhoto'],
-      photos:
-          (json['photos'] as List?)?.map((p) => Photo.fromJson(p)).toList() ??
-          [],
+      photos: photos,
+      franchiseStatus: json['franchise_status'],
+      franchiseDetails: json['franchise_details'],
+      vendorStatus: json['vendor_status'],
+      vendorDetails: json['vendor_details'],
     );
   }
 
@@ -273,6 +294,10 @@ class User {
       'about_me': aboutMe,
       'profile_photo': profilePhoto,
       'photos': photos.map((p) => p.toJson()).toList(),
+      'franchise_status': franchiseStatus,
+      'franchise_details': franchiseDetails,
+      'vendor_status': vendorStatus,
+      'vendor_details': vendorDetails,
     };
   }
 
@@ -292,6 +317,10 @@ class User {
     String? aboutMe,
     String? profilePhoto,
     List<Photo>? photos,
+    String? franchiseStatus,
+    Map<String, dynamic>? franchiseDetails,
+    String? vendorStatus,
+    Map<String, dynamic>? vendorDetails,
   }) {
     return User(
       id: id ?? this.id,
@@ -309,6 +338,10 @@ class User {
       aboutMe: aboutMe ?? this.aboutMe,
       profilePhoto: profilePhoto ?? this.profilePhoto,
       photos: photos ?? this.photos,
+      franchiseStatus: franchiseStatus ?? this.franchiseStatus,
+      franchiseDetails: franchiseDetails ?? this.franchiseDetails,
+      vendorStatus: vendorStatus ?? this.vendorStatus,
+      vendorDetails: vendorDetails ?? this.vendorDetails,
     );
   }
 }

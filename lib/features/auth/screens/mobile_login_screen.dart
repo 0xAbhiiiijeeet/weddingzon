@@ -40,7 +40,22 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
                   'Mobile Login',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 24),
+
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRoutes.franchiseLogin);
+                  },
+                  child: const Text(
+                    'Login with Username & Password',
+                    style: TextStyle(
+                      color: Colors.deepPurple,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
                 const Text(
                   'Enter your registered mobile number',
                   style: TextStyle(color: Colors.grey, fontSize: 16),

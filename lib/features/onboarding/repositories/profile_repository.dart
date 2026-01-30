@@ -23,7 +23,6 @@ class ProfileRepository {
       debugPrint('[PROFILE_REPO] Response status: ${response.statusCode}');
       debugPrint('[PROFILE_REPO] Response data: ${response.data}');
 
-      // Backend might not send 'success': true but sends 200 and 'user' data
       if (response.statusCode == 200 && response.data['user'] != null) {
         return ApiResponse(
           success: true,

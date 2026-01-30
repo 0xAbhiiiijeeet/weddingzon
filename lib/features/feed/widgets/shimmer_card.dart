@@ -13,7 +13,6 @@ class ShimmerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Photo placeholder
           Shimmer.fromColors(
             baseColor: Colors.grey[300]!,
             highlightColor: Colors.grey[100]!,
@@ -31,7 +30,6 @@ class ShimmerCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Name placeholder
                 Shimmer.fromColors(
                   baseColor: Colors.grey[300]!,
                   highlightColor: Colors.grey[100]!,
@@ -46,7 +44,6 @@ class ShimmerCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Location placeholder
                 Shimmer.fromColors(
                   baseColor: Colors.grey[300]!,
                   highlightColor: Colors.grey[100]!,
@@ -61,7 +58,6 @@ class ShimmerCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // About placeholder
                 Shimmer.fromColors(
                   baseColor: Colors.grey[300]!,
                   highlightColor: Colors.grey[100]!,
@@ -100,7 +96,6 @@ class ShimmerCard extends StatelessWidget {
             ),
           ),
 
-          // Buttons placeholder
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(

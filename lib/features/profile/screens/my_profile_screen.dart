@@ -16,7 +16,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch fresh user details (including fresh signed URLs) when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().refreshUser();
     });
@@ -245,38 +244,43 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final user = context.read<AuthProvider>().currentUser;
+    final isFranchiseCreated = user?.createdFor != null && user!.createdFor != 'Self';
+    
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.editProfile),
-                icon: const Icon(Icons.edit),
-                label: const Text('Edit Profile'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+        if (!isFranchiseCreated) ...[
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.editProfile),
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Edit Profile'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.photoManager),
-                icon: const Icon(Icons.photo_library),
-                label: const Text('Manage Photos'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.photoManager),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Manage Photos'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -306,6 +310,32 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
           ),
         ),
+        if (isFranchiseCreated) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Your profile is managed by your franchise. Contact them for any updates.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

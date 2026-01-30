@@ -17,14 +17,12 @@ class ConversationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final hasUnread = conversation.unreadCount > 0;
 
-    // Handle deleted accounts - show fallback name
     final displayName = conversation.displayName.trim().isEmpty
         ? (conversation.username.trim().isEmpty
               ? 'Deleted User'
               : conversation.username)
         : conversation.displayName;
 
-    // Show fallback avatar letter
     final avatarLetter = displayName.isNotEmpty && displayName != 'Deleted User'
         ? displayName[0].toUpperCase()
         : '?';
@@ -51,7 +49,6 @@ class ConversationTile extends StatelessWidget {
                   )
                 : null,
           ),
-          // Online indicator (if needed in future)
         ],
       ),
       title: Text(

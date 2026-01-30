@@ -44,12 +44,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  // Trigger rebuild when text changes (for clear button visibility)
   void _onSearchTextChanged() {
     setState(() {});
   }
 
-  // Debounced search - waits 500ms after user stops typing
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
@@ -108,7 +106,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ),
       body: Column(
         children: [
-          // Search bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -135,7 +132,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
 
-          // Active filters chips
           Consumer<ExploreProvider>(
             builder: (context, provider, child) {
               if (!provider.hasActiveFilters) {
@@ -148,14 +144,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    // Sort By
                     if (provider.filters['sortBy'] != null)
                       _buildFilterChip(
                         'Sort: ${_getSortLabel(provider.filters['sortBy'])}',
                         () => provider.removeFilter('sortBy'),
                       ),
 
-                    // Age Range
                     if (provider.filters['minAge'] != null ||
                         provider.filters['maxAge'] != null)
                       _buildFilterChip(
@@ -163,7 +157,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('age'),
                       ),
 
-                    // Location
                     if (provider.filters['country'] != null)
                       _buildFilterChip(
                         provider.filters['country'],
@@ -180,7 +173,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('city'),
                       ),
 
-                    // Personal
                     if (provider.filters['maritalStatus'] != null)
                       _buildFilterChip(
                         provider.filters['maritalStatus'],
@@ -192,7 +184,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('height'),
                       ),
 
-                    // Cultural
                     if (provider.filters['religion'] != null)
                       _buildFilterChip(
                         provider.filters['religion'],
@@ -220,7 +211,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('siblings'),
                       ),
 
-                    // Professional
                     if (provider.filters['highestEducation'] != null)
                       _buildFilterChip(
                         provider.filters['highestEducation'],
@@ -237,7 +227,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('annualIncome'),
                       ),
 
-                    // Lifestyle
                     if (provider.filters['eatingHabits'] != null)
                       _buildFilterChip(
                         provider.filters['eatingHabits'],
@@ -249,7 +238,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('smokingHabits'),
                       ),
 
-                    // Property
                     if (provider.filters['minLandArea'] != null ||
                         provider.filters['maxLandArea'] != null)
                       _buildFilterChip(
@@ -262,7 +250,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         () => provider.removeFilter('propertyType'),
                       ),
 
-                    // Clear All Button
                     TextButton.icon(
                       onPressed: provider.clearFilters,
                       icon: const Icon(Icons.clear_all, size: 18),
@@ -274,7 +261,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             },
           ),
 
-          // User list
           Expanded(
             child: Consumer<ExploreProvider>(
               builder: (context, provider, child) {

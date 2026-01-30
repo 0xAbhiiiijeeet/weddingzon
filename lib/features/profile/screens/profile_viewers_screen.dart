@@ -21,8 +21,6 @@ class _ProfileViewersScreenState extends State<ProfileViewersScreen> {
   @override
   void initState() {
     super.initState();
-    // Assuming context.read<ApiService>() is available, or get from provider
-    // Ideally this should be in a Provider/Cubit
     final apiService = context.read<ApiService>();
     _userRepository = UserRepository(apiService);
     _loadViewers();
@@ -102,7 +100,6 @@ class _ProfileViewersScreenState extends State<ProfileViewersScreen> {
             itemBuilder: (context, index) {
               final viewer = viewers[index];
 
-              // Handle deleted accounts
               final username = viewer.username.trim();
               final isDeleted = username.isEmpty || username == 'deleted_user';
               final displayName = isDeleted ? 'Deleted User' : username;
@@ -220,7 +217,6 @@ class _ProfileViewersScreenState extends State<ProfileViewersScreen> {
   }
 
   void _navigateToProfile(String username) {
-    // Guard against empty, null, or deleted account usernames
     if (username.isEmpty || username == 'deleted_user') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

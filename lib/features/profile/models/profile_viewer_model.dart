@@ -1,5 +1,5 @@
 class ProfileViewer {
-  final Map<String, dynamic> viewer; // Contains _id, username, profilePhoto
+  final Map<String, dynamic> viewer;
   final DateTime viewedAt;
 
   ProfileViewer({required this.viewer, required this.viewedAt});

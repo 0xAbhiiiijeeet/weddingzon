@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../providers/onboarding_provider.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../../core/routes/app_routes.dart';
 import '../../../core/services/deep_link_service.dart';
 import '../widgets/basic_details_form.dart';
 import '../widgets/location_form.dart';
@@ -24,7 +23,7 @@ class ProfileFormScreen extends StatefulWidget {
 class _ProfileFormScreenState extends State<ProfileFormScreen> {
   final PageController _pageController = PageController();
   final List<GlobalKey<FormState>> _formKeys = List.generate(
-    8, // Updated from 5 to 8
+    8,
     (_) => GlobalKey<FormState>(),
   );
 
@@ -35,7 +34,6 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
       final args = ModalRoute.of(context)!.settings.arguments;
 
       if (args is Map<String, dynamic>) {
-        // New format: {role: 'member', gender: 'Male'/'Female'}
         final role = args['role'] as String?;
         final gender = args['gender'] as String?;
 
@@ -46,11 +44,9 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
           context.read<OnboardingProvider>().updateField('gender', gender);
         }
       } else if (args is String) {
-        // Legacy format: just role string
         context.read<OnboardingProvider>().updateField('role', args);
       }
 
-      // Initialize phone and email from auth
       final authProvider = context.read<AuthProvider>();
       final currentUser = authProvider.currentUser;
       if (currentUser != null) {
@@ -73,7 +69,6 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
           );
         }
 
-        // Pre-populate existing data if profile is incomplete
         if (currentUser.isProfileComplete == false) {
           context.read<OnboardingProvider>().prepopulateFromUser(currentUser);
         }
@@ -124,7 +119,6 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(8, (index) {
-          // Updated from 5 to 8
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             width: index == currentStep ? 32 : 8,
@@ -186,7 +180,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
                     )
                   : Text(
                       provider.currentStep == 7 ? 'Submit' : 'Next',
-                    ), // Updated from 4 to 7
+                    ),
             ),
           ),
         ],
@@ -206,15 +200,12 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
     _formKeys[provider.currentStep].currentState!.save();
 
     if (provider.currentStep == 7) {
-      // Updated from 4 to 7
-      // Submit profile
       debugPrint('[PROFILE_FORM] Submitting profile...');
       final response = await provider.submitProfile();
       debugPrint('[PROFILE_FORM] Submit response success: ${response.success}');
       debugPrint('[PROFILE_FORM] Submit response data: ${response.data}');
 
       if (response.success && response.data != null) {
-        // Update auth provider with new user data
         if (!mounted) {
           debugPrint('[PROFILE_FORM] Content not mounted after submit');
           return;
@@ -230,16 +221,9 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
 
         if (!mounted) return;
         if (!mounted) return;
-        debugPrint(
-          '[PROFILE_FORM] Navigating to Feed (Route: ${AppRoutes.feed})...',
-        );
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.feed,
-          (route) => false,
-        );
+        debugPrint('[PROFILE_FORM] Routing user via AuthProvider...');
+        context.read<AuthProvider>().routeUser(response.data!);
 
-        // Check for pending deep link after signup completion
         final deepLinkService = context.read<DeepLinkService>();
         if (deepLinkService.pendingUsername != null) {
           debugPrint(

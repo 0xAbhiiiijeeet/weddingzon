@@ -29,9 +29,8 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 24),
 
-          // Profile Created For*
           DropdownButtonFormField<String>(
-            value: provider.formData['created_for'],
+            initialValue: provider.formData['created_for'],
             decoration: const InputDecoration(
               labelText: 'Profile Created For*',
               border: OutlineInputBorder(),
@@ -51,7 +50,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Username
           TextFormField(
             initialValue: provider.formData['username'],
             readOnly: true,
@@ -66,7 +64,62 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // First Name
+          TextFormField(
+            initialValue: provider.formData['email'],
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              border: OutlineInputBorder(),
+              hintText: 'example@email.com',
+              helperText: 'Optional - for contact purposes',
+            ),
+            keyboardType: TextInputType.emailAddress,
+            validator: (v) {
+              if (v != null && v.isNotEmpty) {
+                if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(v)) {
+                  return 'Enter a valid email address';
+                }
+              }
+              return null;
+            },
+            onChanged: (v) {
+              debugPrint('[BASIC_DETAILS_FORM] 📧 Email changed: $v');
+              provider.updateField('email', v);
+            },
+            onSaved: (v) {
+              debugPrint('[BASIC_DETAILS_FORM] 💾 Email saved: $v');
+              provider.updateField('email', v);
+            },
+          ),
+          const SizedBox(height: 16),
+
+          TextFormField(
+            initialValue: provider.formData['phone'],
+            decoration: const InputDecoration(
+              labelText: 'Phone Number',
+              border: OutlineInputBorder(),
+              hintText: '+919876543210',
+              helperText: 'Include country code (e.g., +91)',
+            ),
+            keyboardType: TextInputType.phone,
+            validator: (v) {
+              if (v != null && v.isNotEmpty) {
+                if (!RegExp(r'^\+?[1-9]\d{1,14}$').hasMatch(v)) {
+                  return 'Enter valid phone with country code';
+                }
+              }
+              return null;
+            },
+            onChanged: (v) {
+              debugPrint('[BASIC_DETAILS_FORM] 📱 Phone changed: $v');
+              provider.updateField('phone', v);
+            },
+            onSaved: (v) {
+              debugPrint('[BASIC_DETAILS_FORM] 💾 Phone saved: $v');
+              provider.updateField('phone', v);
+            },
+          ),
+          const SizedBox(height: 16),
+
           TextFormField(
             initialValue: provider.formData['first_name'],
             decoration: const InputDecoration(
@@ -79,7 +132,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Last Name
           TextFormField(
             initialValue: provider.formData['last_name'],
             decoration: const InputDecoration(
@@ -92,7 +144,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Date of Birth with Date Picker
           TextFormField(
             readOnly: true,
             decoration: const InputDecoration(
@@ -131,7 +182,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Age (Read-only, calculated from DOB)
           TextFormField(
             readOnly: true,
             enabled: false,
@@ -153,7 +203,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Gender
           DropdownButtonFormField<String>(
             initialValue: provider.formData['gender'],
             decoration: const InputDecoration(
@@ -171,7 +220,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Height
           DropdownButtonFormField<String>(
             initialValue: provider.formData['height'],
             decoration: const InputDecoration(
@@ -198,7 +246,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Marital Status
           DropdownButtonFormField<String>(
             initialValue: provider.formData['marital_status'],
             decoration: const InputDecoration(
@@ -217,7 +264,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Mother Tongue
           DropdownButtonFormField<String>(
             initialValue: provider.formData['mother_tongue'],
             decoration: const InputDecoration(
@@ -242,7 +288,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Disability Status
           Consumer<OnboardingProvider>(
             builder: (context, provider, _) {
               final disability = provider.formData['disability'];
@@ -281,7 +326,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Aadhar Number
           TextFormField(
             initialValue: provider.formData['aadhar_number'],
             decoration: const InputDecoration(
@@ -297,7 +341,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // Blood Group
           DropdownButtonFormField<String>(
             initialValue: provider.formData['blood_group'],
             decoration: const InputDecoration(
@@ -319,7 +362,6 @@ class _BasicDetailsFormState extends State<BasicDetailsForm> {
           ),
           const SizedBox(height: 16),
 
-          // About Me
           TextFormField(
             initialValue: provider.formData['about_me'],
             decoration: const InputDecoration(

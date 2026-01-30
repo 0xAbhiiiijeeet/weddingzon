@@ -4,12 +4,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/feed_user.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../shared/widgets/image_viewer.dart';
 
 class ProfileCard extends StatefulWidget {
   final FeedUser user;
+  final bool readOnly;
 
-  const ProfileCard({super.key, required this.user});
+  const ProfileCard({super.key, required this.user, this.readOnly = false});
 
   @override
   State<ProfileCard> createState() => _ProfileCardState();
@@ -26,16 +28,32 @@ class _ProfileCardState extends State<ProfileCard> {
 
   @override
   Widget build(BuildContext context) {
-    final photos = widget.user.photos.isNotEmpty
-        ? widget.user.photos
-        : []; // Will show placeholder if empty
+    final photos = widget.user.photos.isNotEmpty ? widget.user.photos : [];
+
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('[ProfileCard] build called');
+    debugPrint('[ProfileCard] username: ${widget.user.username}');
+    debugPrint('[ProfileCard] readOnly: ${widget.readOnly}');
+    debugPrint('═══════════════════════════════════════════════════════');
 
     return InkWell(
       onTap: () {
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('[ProfileCard] Card tapped!');
+        debugPrint('[ProfileCard] Navigating to profile');
+        debugPrint('[ProfileCard] username: ${widget.user.username}');
+        debugPrint('[ProfileCard] readOnly: ${widget.readOnly}');
+        debugPrint(
+          '[ProfileCard] Arguments: {username: ${widget.user.username}, readOnly: ${widget.readOnly}}',
+        );
+        debugPrint('═══════════════════════════════════════════════════════');
         Navigator.pushNamed(
           context,
           '/profile/user',
-          arguments: widget.user.username,
+          arguments: {
+            'username': widget.user.username,
+            'readOnly': widget.readOnly,
+          },
         );
       },
       child: Card(
@@ -44,16 +62,13 @@ class _ProfileCardState extends State<ProfileCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo Carousel
             _buildPhotoCarousel(photos),
 
-            // User Info
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name and Age
                   Row(
                     children: [
                       Expanded(
@@ -77,7 +92,6 @@ class _ProfileCardState extends State<ProfileCard> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Location
                   if (widget.user.location != null)
                     Row(
                       children: [
@@ -95,7 +109,6 @@ class _ProfileCardState extends State<ProfileCard> {
                     ),
                   const SizedBox(height: 8),
 
-                  // Occupation
                   if (widget.user.occupation != null)
                     Row(
                       children: [
@@ -109,7 +122,6 @@ class _ProfileCardState extends State<ProfileCard> {
                     ),
                   const SizedBox(height: 8),
 
-                  // Religion
                   if (widget.user.religion != null)
                     Row(
                       children: [
@@ -123,7 +135,6 @@ class _ProfileCardState extends State<ProfileCard> {
                     ),
                   const SizedBox(height: 12),
 
-                  // About Me
                   if (widget.user.aboutMe != null)
                     Text(
                       widget.user.aboutMe!,
@@ -158,7 +169,6 @@ class _ProfileCardState extends State<ProfileCard> {
             },
           ),
 
-          // Share Button Overlay (Top Right)
           Positioned(
             top: 12,
             right: 12,
@@ -175,7 +185,6 @@ class _ProfileCardState extends State<ProfileCard> {
             ),
           ),
 
-          // Dots Indicator
           if (photos.length > 1)
             Positioned(
               bottom: 16,
@@ -204,7 +213,6 @@ class _ProfileCardState extends State<ProfileCard> {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: InkWell(
         onTap: () {
-          // Find current photo index
           int currentIndex = widget.user.photos.indexWhere(
             (p) => p.url == photo.url,
           );
@@ -256,16 +264,15 @@ class _ProfileCardState extends State<ProfileCard> {
     debugPrint('[Share] ProfileCard: Share button clicked');
     debugPrint('[Share] User: ${widget.user.fullName}');
     debugPrint('[Share] Username: ${widget.user.username}');
-    
-    final profileUrl =
-        'https://dev.d34g4kpybwb3xb.amplifyapp.com/${widget.user.username}';
+
+    final profileUrl = AppConstants.getProfileDeepLink(widget.user.username);
     final shareText =
         'Check out ${widget.user.fullName}\'s profile on WeddingZon!\n$profileUrl';
 
     debugPrint('[Share] Profile URL: $profileUrl');
     debugPrint('[Share] Share text: $shareText');
     debugPrint('[Share] Invoking native share...');
-    
+
     try {
       Share.share(
         shareText,

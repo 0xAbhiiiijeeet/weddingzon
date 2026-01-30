@@ -10,14 +10,13 @@ import '../repository/chat_repository.dart';
 class ChatProvider extends ChangeNotifier {
   final ChatRepository _chatRepository;
   final SocketService _socketService;
-  final AuthRepository _authRepository; // Add dependency
+  final AuthRepository _authRepository;
 
-  // State
   List<Conversation> _conversations = [];
   List<Message> _messages = [];
   Conversation? _currentChat;
-  String? _currentChatUserId; // The user we're chatting WITH
-  String? _myUserId; // Current logged-in user ID
+  String? _currentChatUserId;
+  String? _myUserId;
   bool _isLoading = false;
   bool _isSending = false;
   final Set<String> _typingUsers = {};
@@ -32,7 +31,6 @@ class ChatProvider extends ChangeNotifier {
     _setupSocketListeners();
   }
 
-  // Getters
   List<Conversation> get conversations => _conversations;
   List<Message> get messages => _messages;
   Conversation? get currentChat => _currentChat;
@@ -43,7 +41,6 @@ class ChatProvider extends ChangeNotifier {
   bool get isSocketConnected => _socketService.isConnected;
   String? get myUserId => _myUserId;
 
-  // Pagination State
   int _chatPage = 1;
   bool _hasMoreMessages = true;
   bool _isLoadingMore = false;
@@ -57,31 +54,26 @@ class ChatProvider extends ChangeNotifier {
     _socketService.onUserTyping = _handleUserTyping;
     _socketService.onUserStoppedTyping = _handleUserStoppedTyping;
     _socketService.onUnauthorized =
-        _handleSocketUnauthorized; // Register listener
+        _handleSocketUnauthorized;
   }
 
   Future<void> _handleSocketUnauthorized() async {
     debugPrint('[CHAT] Socket unauthorized! Attempting token refresh...');
 
-    // 1. Disconnect current socket
     disconnectSocket();
 
-    // 2. Refresh token (AuthRepository handles concurrency)
     final newToken = await _authRepository.refreshToken();
 
     if (newToken != null && newToken.isNotEmpty) {
       debugPrint('[CHAT] Token refreshed, reconnecting socket...');
-      // 3. Reconnect with new token
       connectSocket(newToken);
     } else {
       debugPrint(
         '[CHAT] Failed to refresh token, socket remains disconnected.',
       );
-      // Optionally notify user or logout if critical
     }
   }
 
-  /// Set the current logged-in user ID - call this after auth
   void setCurrentUserId(String userId) {
     if (_myUserId != userId) {
       debugPrint(
@@ -99,20 +91,15 @@ class ChatProvider extends ChangeNotifier {
     debugPrint('[CHAT] Current user ID set to: $userId');
   }
 
-  /// Connect to socket with auth token
   void connectSocket(String token, {String cookieString = ''}) {
     debugPrint('[CHAT] Connecting socket with token...');
     _socketService.connect(token, cookieString: cookieString);
   }
 
-  /// Disconnect socket
   void disconnectSocket() {
     _socketService.disconnect();
   }
 
-  // =====================================================
-  // CONVERSATIONS
-  // =====================================================
 
   Future<void> loadConversations() async {
     _isLoading = true;
@@ -128,7 +115,6 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update conversation with new message (for list view)
   void _updateConversationWithMessage(Message message) {
     final otherUserId = message.senderId == _myUserId
         ? message.receiverId
@@ -136,7 +122,6 @@ class ChatProvider extends ChangeNotifier {
 
     final index = _conversations.indexWhere((c) => c.userId == otherUserId);
 
-    // Determine if this message should increment unread count
     final isCurrentChat = _currentChat?.userId == otherUserId;
 
     debugPrint('[CHAT] Updating conversation for user: $otherUserId');
@@ -162,29 +147,24 @@ class ChatProvider extends ChangeNotifier {
         updatedAt: message.createdAt,
       );
 
-      // Move to top of list
       if (index > 0) {
         final updated = _conversations.removeAt(index);
         _conversations.insert(0, updated);
       }
     } else {
-      // New conversation!
-      // We might not have full user details, but we can display what we have or placeholders.
-      // Ideally, the message payload or a separate fetch would provide this.
-      // For now, assume optimistic or minimal data.
       debugPrint('[CHAT] New conversation created from incoming message');
       _conversations.insert(
         0,
         Conversation(
           userId: otherUserId,
-          username: 'User', // Placeholder until refresh
+          username: 'User',
           firstName: '',
           lastName: '',
           profilePhoto: null,
           lastMessage: message.message,
           unreadCount: isCurrentChat
               ? 0
-              : 1, // Don't count if currently viewing
+              : 1,
           updatedAt: message.createdAt,
         ),
       );
@@ -194,9 +174,6 @@ class ChatProvider extends ChangeNotifier {
     debugPrint('[CHAT] Total unread count: $totalUnreadCount');
   }
 
-  // =====================================================
-  // CHAT
-  // =====================================================
 
   Future<void> openChat(
     String chatWithUserId, {
@@ -208,7 +185,6 @@ class ChatProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Set current chat
     final existingConversation = _conversations
         .where((c) => c.userId == chatWithUserId)
         .firstOrNull;
@@ -220,12 +196,10 @@ class ChatProvider extends ChangeNotifier {
           profilePhoto: profilePhoto,
         );
 
-    // Reset pagination
     _chatPage = 1;
     _hasMoreMessages = true;
     _isLoadingMore = false;
 
-    // Load chat history (First page)
     final response = await _chatRepository.getChatHistory(
       chatWithUserId,
       page: _chatPage,
@@ -239,7 +213,6 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    // Mark as read
     await markAsRead(chatWithUserId);
 
     _isLoading = false;
@@ -265,7 +238,6 @@ class ChatProvider extends ChangeNotifier {
       final newMessages = response.data!;
 
       if (newMessages.isNotEmpty) {
-        // Filter duplicates and insert at top
         final uniqueMessages = newMessages
             .where(
               (newMsg) =>
@@ -294,16 +266,11 @@ class ChatProvider extends ChangeNotifier {
     _messages = [];
     _typingTimer?.cancel();
 
-    // Important: Notify listeners so badge counts update
-    // This ensures BadgeProvider recalculates the unread count
     notifyListeners();
 
     debugPrint('[CHAT] Chat closed, badge should update');
   }
 
-  // =====================================================
-  // MESSAGING
-  // =====================================================
 
   void sendMessage(
     String receiverId,
@@ -315,7 +282,6 @@ class ChatProvider extends ChangeNotifier {
       '[CHAT] sendMessage called: receiverId=$receiverId, message="$message", type=${type.value}, mediaUrl=$mediaUrl',
     );
 
-    // Validation based on message type
     if (type == MessageType.text) {
       if (message.trim().isEmpty) {
         debugPrint('[CHAT] Text message is empty, ignoring');
@@ -328,7 +294,6 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    // Add to local state immediately (optimistic update)
     final newMessage = Message(
       senderId: _myUserId ?? 'unknown',
       receiverId: receiverId,
@@ -345,7 +310,6 @@ class ChatProvider extends ChangeNotifier {
     );
     notifyListeners();
 
-    // Send via socket if connected
     if (_socketService.isConnected) {
       debugPrint('[CHAT] Socket connected, sending message via socket...');
       _socketService.sendMessage(
@@ -361,7 +325,6 @@ class ChatProvider extends ChangeNotifier {
       );
     }
 
-    // Stop typing indicator
     stopTyping();
   }
 
@@ -373,7 +336,6 @@ class ChatProvider extends ChangeNotifier {
 
     int successCount = 0;
 
-    // Upload images in parallel
     await Future.wait(
       files.map((file) async {
         final success = await _uploadAndSendImage(receiverId, file);
@@ -406,26 +368,23 @@ class ChatProvider extends ChangeNotifier {
       if (response.success && response.data != null) {
         debugPrint('[CHAT] Image uploaded successfully: ${response.data}');
 
-        // Don't call sendMessage, handle it directly here
         final newMessage = Message(
           senderId: _myUserId ?? 'unknown',
           receiverId: receiverId,
-          message: '', // Empty for images
+          message: '',
           type: MessageType.image,
           mediaUrl: response.data,
           createdAt: DateTime.now(),
         );
 
-        // Add to local state
         _messages.add(newMessage);
         _updateConversationWithMessage(newMessage);
 
-        // Send via socket
         if (_socketService.isConnected) {
           debugPrint('[CHAT] Sending image message via socket...');
           _socketService.sendMessage(
             receiverId: receiverId,
-            message: '', // Empty message for images
+            message: '',
             type: MessageType.image,
             mediaUrl: response.data,
           );
@@ -448,31 +407,28 @@ class ChatProvider extends ChangeNotifier {
   void _handleIncomingMessage(Message message) {
     debugPrint('[CHAT] Incoming message from ${message.senderId}');
 
-    // If message is from ME, check if we have an optimistic copy to update
     if (message.senderId == _myUserId) {
       final index = _messages.lastIndexWhere(
         (m) =>
-            m.id == null && // Optimistic messages have no ID
+            m.id == null &&
             m.message == message.message &&
             m.type == message.type &&
             m.createdAt.difference(message.createdAt).inSeconds.abs() < 5,
-      ); // Within 5 seconds
+      );
 
       if (index != -1) {
         debugPrint(
           '[CHAT] Deduplicated own message. Updating ID: ${message.id}',
         );
-        _messages[index] = message; // Replace optimistic with real
+        _messages[index] = message;
         notifyListeners();
         _updateConversationWithMessage(message);
         return;
       }
     }
 
-    // Add to messages if in current chat
     if (_currentChatUserId == message.senderId ||
         _currentChatUserId == message.receiverId) {
-      // Double check it's not already in the list by ID (if it came twice from socket)
       if (message.id != null && _messages.any((m) => m.id == message.id)) {
         debugPrint(
           '[CHAT] Duplicate message ID ${message.id} received, ignoring',
@@ -482,24 +438,18 @@ class ChatProvider extends ChangeNotifier {
 
       _messages.add(message);
 
-      // Mark as read if current chat
       if (_currentChat != null && message.senderId == _currentChatUserId) {
         markAsRead(message.senderId);
       }
     }
 
-    // Update conversation list
     _updateConversationWithMessage(message);
 
-    // Remove typing indicator for this user
     _typingUsers.remove(message.senderId);
 
     notifyListeners();
   }
 
-  // =====================================================
-  // TYPING INDICATORS
-  // =====================================================
 
   void startTyping() {
     if (_currentChatUserId == null || _isTyping) return;
@@ -507,7 +457,6 @@ class ChatProvider extends ChangeNotifier {
     _isTyping = true;
     _socketService.sendTyping(_currentChatUserId!);
 
-    // Auto-stop typing after 3 seconds of no input
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(seconds: 3), stopTyping);
   }
@@ -530,15 +479,11 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // =====================================================
-  // MARK AS READ
-  // =====================================================
 
   Future<void> markAsRead(String senderId) async {
     final response = await _chatRepository.markAsRead(senderId);
 
     if (response.success) {
-      // Update conversation unread count
       final index = _conversations.indexWhere((c) => c.userId == senderId);
       if (index != -1) {
         final existing = _conversations[index];
@@ -557,11 +502,7 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  // =====================================================
-  // CLEANUP
-  // =====================================================
 
-  /// Get total unread count across all conversations
   int get totalUnreadCount {
     return _conversations.fold(0, (sum, item) => sum + item.unreadCount);
   }

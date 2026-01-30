@@ -13,10 +13,6 @@ class ChatRepository {
 
   ChatRepository(this._apiService);
 
-  // =====================================================
-  // GET CONVERSATIONS
-  // GET /chat/conversations
-  // =====================================================
   Future<ApiResponse<List<Conversation>>> getConversations() async {
     try {
       final response = await _apiService.dio.get(
@@ -39,10 +35,6 @@ class ChatRepository {
     }
   }
 
-  // =====================================================
-  // GET CHAT HISTORY
-  // GET /chat/history/:userId
-  // =====================================================
   Future<ApiResponse<List<Message>>> getChatHistory(
     String userId, {
     int page = 1,
@@ -69,10 +61,6 @@ class ChatRepository {
     }
   }
 
-  // =====================================================
-  // UPLOAD CHAT IMAGE
-  // POST /chat/upload
-  // =====================================================
   Future<ApiResponse<String>> uploadChatImage(File file) async {
     try {
       final mimeType = lookupMimeType(file.path) ?? 'image/jpeg';
@@ -108,10 +96,6 @@ class ChatRepository {
     }
   }
 
-  // =====================================================
-  // MARK AS READ
-  // POST /chat/read
-  // =====================================================
   Future<ApiResponse<void>> markAsRead(String senderId) async {
     try {
       final response = await _apiService.dio.post(
@@ -128,9 +112,6 @@ class ChatRepository {
     }
   }
 
-  // =====================================================
-  // ERROR HANDLING
-  // =====================================================
   ApiResponse<T> _error<T>(Response response) {
     return ApiResponse(
       success: false,

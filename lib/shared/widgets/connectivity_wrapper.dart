@@ -31,7 +31,6 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
   }
 
   void _updateConnectionStatus(List<ConnectivityResult> result) {
-    // Check if any of the connectivity results indicate a connection
     bool isConnected = result.any((r) => r != ConnectivityResult.none);
 
     if (mounted) {

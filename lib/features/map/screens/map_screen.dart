@@ -18,33 +18,29 @@ class _MapScreenState extends State<MapScreen>
   final MapController _mapController = MapController();
 
   @override
-  bool get wantKeepAlive => true; // Keep state alive when switching tabs
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    // Initialize location when screen is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MapProvider>().initLocation();
     });
   }
 
-  /// Handle retry button - either re-request permission or open settings
   Future<void> _handleRetry() async {
     final provider = context.read<MapProvider>();
 
     if (provider.isPermissionDeniedForever) {
-      // Open app settings
       await Geolocator.openAppSettings();
     } else {
-      // Try to request location again
       await provider.initLocation();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
     return Scaffold(
       body: Consumer<MapProvider>(
         builder: (context, provider, child) {
@@ -103,15 +99,11 @@ class _MapScreenState extends State<MapScreen>
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.weddingzon.app',
                   ),
-                  // Radius Circle
                   CircleLayer(
                     circles: [
                       CircleMarker(
                         point: provider.currentLocation!,
-                        radius:
-                            provider.radius *
-                            1000.0, // Convert km to meters? No, CircleLayer uses radius in logical pixels usually or radius in meters if useRadiusInMeter is true.
-                        // Since flutter_map 6+, CircleMarker radius is screens points unless useRadiusInMeter is true
+                        radius: provider.radius * 1000.0,
                         useRadiusInMeter: true,
                         color: Colors.blue.withOpacity(0.1),
                         borderColor: Colors.blue,
@@ -121,7 +113,6 @@ class _MapScreenState extends State<MapScreen>
                   ),
                   MarkerLayer(
                     markers: [
-                      // Current User Marker
                       Marker(
                         point: provider.currentLocation!,
                         width: 60,
@@ -132,13 +123,12 @@ class _MapScreenState extends State<MapScreen>
                           size: 30,
                         ),
                       ),
-                      // Nearby Users Markers
                       ...provider.nearbyUsers.map((user) {
                         return Marker(
                           point: LatLng(
                             user.coordinates[1],
                             user.coordinates[0],
-                          ), // [lng, lat] from mongo
+                          ),
                           width: 50,
                           height: 50,
                           child: GestureDetector(
@@ -181,10 +171,179 @@ class _MapScreenState extends State<MapScreen>
                       }),
                     ],
                   ),
+
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Autocomplete<Map<String, dynamic>>(
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.length < 3) {
+                              return const Iterable<
+                                Map<String, dynamic>
+                              >.empty();
+                            }
+                            return provider.getSuggestions(
+                              textEditingValue.text,
+                            );
+                          },
+                          displayStringForOption:
+                              (Map<String, dynamic> option) =>
+                                  option['display_name'] ?? '',
+                          onSelected: (Map<String, dynamic> selection) {
+                            if (selection['lat'] != null &&
+                                selection['lon'] != null) {
+                              provider.moveToLocation(
+                                selection['lat'],
+                                selection['lon'],
+                              );
+                              _mapController.move(
+                                LatLng(selection['lat'], selection['lon']),
+                                13.0,
+                              );
+                              FocusScope.of(context).unfocus();
+                            }
+                          },
+                          fieldViewBuilder:
+                              (
+                                BuildContext context,
+                                TextEditingController textEditingController,
+                                FocusNode focusNode,
+                                VoidCallback onFieldSubmitted,
+                              ) {
+                                return TextField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search City or Pincode...',
+                                    prefixIcon: const Icon(Icons.search),
+                                    suffixIcon: provider.isLoading
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(12.0),
+                                            child: SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          )
+                                        : IconButton(
+                                            icon: const Icon(
+                                              Icons.clear,
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              textEditingController.clear();
+                                              provider.initLocation();
+                                            },
+                                          ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  onSubmitted: (String value) {
+                                    if (value.trim().isNotEmpty) {
+                                      provider.searchLocation(value).then((
+                                        success,
+                                      ) {
+                                        if (success &&
+                                            provider.currentLocation != null) {
+                                          _mapController.move(
+                                            provider.currentLocation!,
+                                            13.0,
+                                          );
+                                        }
+                                      });
+                                    }
+                                  },
+                                );
+                              },
+                          optionsViewBuilder:
+                              (
+                                BuildContext context,
+                                AutocompleteOnSelected<Map<String, dynamic>>
+                                onSelected,
+                                Iterable<Map<String, dynamic>> options,
+                              ) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    elevation: 4.0,
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      width:
+                                          MediaQuery.of(context).size.width -
+                                          64,
+                                      constraints: const BoxConstraints(
+                                        maxHeight: 200,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
+                                              final Map<String, dynamic>
+                                              option = options.elementAt(index);
+                                              return ListTile(
+                                                title: Text(
+                                                  option['display_name'] ?? '',
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                leading: const Icon(
+                                                  Icons.location_on,
+                                                  size: 16,
+                                                  color: Colors.grey,
+                                                ),
+                                                onTap: () => onSelected(option),
+                                              );
+                                            },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    bottom: 180,
+                    right: 20,
+                    child: FloatingActionButton(
+                      heroTag: 'gps_button',
+                      onPressed: () async {
+                        await provider.initLocation();
+                        if (provider.currentLocation != null) {
+                          _mapController.move(provider.currentLocation!, 13.0);
+                        }
+                      },
+                      child: const Icon(Icons.my_location),
+                    ),
+                  ),
                 ],
               ),
 
-              // Radius Control and Info
               Positioned(
                 bottom: 20,
                 left: 20,
@@ -217,7 +376,6 @@ class _MapScreenState extends State<MapScreen>
                           label: '${provider.radius} km',
                           onChanged: (value) {
                             provider.updateRadius(value.toInt());
-                            // Optionally animate map to bounds if needed
                           },
                         ),
                         Text(

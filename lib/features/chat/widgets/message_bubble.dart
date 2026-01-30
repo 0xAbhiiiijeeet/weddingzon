@@ -96,7 +96,6 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildImageMessage(BuildContext context) {
-    // Use mediaUrl for images (new API structure), fallback to message for backward compatibility
     final imageUrl = message.mediaUrl ?? message.message;
 
     return GestureDetector(
@@ -112,7 +111,7 @@ class MessageBubble extends StatelessWidget {
                 Photo(
                   url: imageUrl,
                   isProfile: false,
-                  restricted: false, // Explicitly unrestricted
+                  restricted: false,
                 ),
               ],
               hasAccess: true,

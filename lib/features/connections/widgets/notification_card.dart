@@ -9,12 +9,9 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Extracting fields from data or model properties
     final data = notification.data;
     final name = data['name'] ?? data['username'] ?? 'Unknown User';
-    // Logic for action text based on type if not explicit
     final action = data['action'] ?? _getActionText(notification.type);
-    // Logic for type text
     final typeText = data['type_text'] ?? _getTypeText(notification.type);
 
     final profilePhoto = data['profilePhoto'] ?? '';
@@ -31,7 +28,6 @@ class NotificationCard extends StatelessWidget {
         onTap: () {
           final username = data['username'] as String?;
 
-          // Guard against deleted or invalid accounts
           if (username == null ||
               username.isEmpty ||
               username == 'deleted_user') {
@@ -51,7 +47,6 @@ class NotificationCard extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Avatar
               CircleAvatar(
                 radius: 24,
                 backgroundColor: Colors.grey.shade50,
@@ -71,7 +66,6 @@ class NotificationCard extends StatelessWidget {
               ),
               const SizedBox(width: 16),
 
-              // Text Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,7 +96,6 @@ class NotificationCard extends StatelessWidget {
                 ),
               ),
 
-              // Arrow Icon (Indicate navigation)
               Icon(Icons.arrow_forward, size: 20, color: Colors.grey.shade400),
             ],
           ),

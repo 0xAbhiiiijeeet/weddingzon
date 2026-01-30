@@ -7,6 +7,40 @@ class EducationCareerForm extends StatelessWidget {
 
   const EducationCareerForm({super.key, required this.formKey});
 
+  String? _normalizeEducation(String? value) {
+    if (value == null) return null;
+    if (value == 'Bachelors') return "Bachelor's Degree";
+    if (value == 'Masters') return "Master's Degree";
+    return value;
+  }
+
+  String? _normalizeIncome(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    debugPrint(
+      '[EDUCATION_FORM] Normalizing income: "$value" (trimmed: "$trimmed")',
+    );
+
+    if (trimmed == '0-2 Lakh') return 'Less than 5 Lakhs';
+    if (trimmed == '2-5 Lakh') return 'Less than 5 Lakhs';
+    if (trimmed == '0-5 Lakh') return 'Less than 5 Lakhs';
+
+    const validOptions = [
+      'Less than 5 Lakhs',
+      '5-10 Lakhs',
+      '10-20 Lakhs',
+      '20-50 Lakhs',
+      '50 Lakhs - 1 Crore',
+      'Above 1 Crore',
+    ];
+    if (validOptions.contains(trimmed)) return trimmed;
+
+    debugPrint(
+      '[EDUCATION_FORM] Income mismatch: "$trimmed" not found in valid options',
+    );
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.read<OnboardingProvider>();
@@ -23,7 +57,7 @@ class EducationCareerForm extends StatelessWidget {
           const SizedBox(height: 24),
 
           DropdownButtonFormField<String>(
-            initialValue: provider.formData['highest_education'],
+            initialValue: _normalizeEducation(provider.formData['highest_education']),
             decoration: const InputDecoration(
               labelText: 'Highest Education *',
               border: OutlineInputBorder(),
@@ -87,9 +121,9 @@ class EducationCareerForm extends StatelessWidget {
           const SizedBox(height: 16),
 
           DropdownButtonFormField<String>(
-            initialValue: provider.formData['personal_income'],
+            initialValue: _normalizeIncome(provider.formData['personal_income']),
             decoration: const InputDecoration(
-              labelText: 'Annual Income*',
+              labelText: 'Annual Income (Fixed) *',
               border: OutlineInputBorder(),
             ),
             items: [

@@ -14,22 +14,17 @@ class NotificationsProvider with ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
-  /// Load from local storage + fetch backend history (my-connections pseudo-history)
   Future<void> loadNotifications({bool forceRefresh = false}) async {
     if (_isLoading && !forceRefresh) return;
 
-    // Only show loading indicator if we don't have data or explicitly forcing
     if (_notifications.isEmpty || forceRefresh) {
       _isLoading = true;
       notifyListeners();
     }
 
-    // 1. Load Local
     final local = await _storageService.getNotifications();
-    // Create a temporary list to avoid clearing state affecting UI immediately
     List<NotificationModel> tempList = List.from(local);
 
-    // 2. Load "Accepted Connections" as pseudo-notifications if needed
     await _loadAcceptedConnections(tempList);
 
     _notifications = tempList;
@@ -47,11 +42,9 @@ class NotificationsProvider with ChangeNotifier {
         '[NOTIFICATIONS] Fetched ${notifications.length} notifications from backend',
       );
 
-      // Convert backend notifications to NotificationModel
       final backendNotifications = notifications.map((n) {
         debugPrint('[NOTIFICATIONS] Raw notification data: $n');
 
-        // Backend returns: { _id, type, status, otherUser: { username, profilePhoto, ... }, updatedAt }
         final otherUser =
             n['otherUser'] ?? n['targetUser'] ?? n['recipient'] ?? {};
         final username = otherUser['username'] ?? 'UnknownUser';
@@ -62,7 +55,6 @@ class NotificationsProvider with ChangeNotifier {
                 .trim();
         final finalName = displayName.isNotEmpty ? displayName : username;
 
-        // Parse timestamp from updatedAt or grantedAt
         DateTime timestamp = DateTime.now();
         if (n['grantedAt'] != null) {
           timestamp =
@@ -72,10 +64,9 @@ class NotificationsProvider with ChangeNotifier {
               DateTime.tryParse(n['updatedAt'].toString()) ?? DateTime.now();
         }
 
-        // Determine notification type and text based on API response
         final apiType =
-            n['type'] ?? 'connection'; // 'connection', 'photo', 'details'
-        final status = n['status'] ?? 'accepted'; // 'accepted', 'granted'
+            n['type'] ?? 'connection';
+        final status = n['status'] ?? 'accepted';
 
         String notificationType;
         String actionText;
@@ -98,7 +89,6 @@ class NotificationsProvider with ChangeNotifier {
           requestTypeText = 'details request';
           title = 'Details Access Granted';
         } else {
-          // Fallback for any other types
           notificationType = 'request_accepted';
           actionText = 'accepted your';
           requestTypeText = 'request';
@@ -153,17 +143,14 @@ class NotificationsProvider with ChangeNotifier {
     }
   }
 
-  /// Internal filter to ensure we only show desired notification types
   List<NotificationModel> get filteredNotifications {
     return _notifications.where((n) {
-      // Show all types of granted/accepted notifications
       return n.type == 'request_accepted' ||
           n.type == 'photo_access_granted' ||
           n.type == 'details_access_granted';
     }).toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
-  // Expose filtered list by default
   List<NotificationModel> get notifications => filteredNotifications;
 
   Future<void> markAsRead(String id) async {
@@ -179,7 +166,6 @@ class NotificationsProvider with ChangeNotifier {
     }
   }
 
-  /// Check if a notification is a duplicate
   bool _isDuplicate(
     NotificationModel newNotification,
     List<NotificationModel> existingList,
@@ -194,7 +180,6 @@ class NotificationsProvider with ChangeNotifier {
     return existingList.any((existing) {
       if (existing.type != newNotification.type) return false;
 
-      // Check by user ID if available (most reliable)
       final existingUserId =
           existing.data['userId'] ?? existing.data['user_id'];
       if (newUserId != null &&
@@ -203,7 +188,6 @@ class NotificationsProvider with ChangeNotifier {
         return true;
       }
 
-      // Check by username (normalized)
       final existingUsername = existing.data['username']
           ?.toString()
           .toLowerCase()
@@ -214,7 +198,6 @@ class NotificationsProvider with ChangeNotifier {
         return true;
       }
 
-      // Fallback to body check
       if (newUsername != null &&
           existing.body.toLowerCase().contains(newUsername)) {
         return true;
@@ -225,7 +208,6 @@ class NotificationsProvider with ChangeNotifier {
   }
 
   void handleRealTimeNotification(NotificationModel notification) {
-    // If this is a real-time "request_accepted", remove any pseudo ones for this user
     if (notification.type == 'request_accepted') {
       final username = notification.data['username']
           ?.toString()
@@ -237,7 +219,6 @@ class NotificationsProvider with ChangeNotifier {
       _notifications.removeWhere((existing) {
         if (existing.type != 'request_accepted') return false;
         if (existing.id.startsWith('conn_')) {
-          // This is a pseudo-notification
           final existingUsername = existing.data['username']
               ?.toString()
               .toLowerCase()
@@ -252,7 +233,6 @@ class NotificationsProvider with ChangeNotifier {
       });
     }
 
-    // Add new notification if not duplicate
     if (!_isDuplicate(notification, _notifications)) {
       _notifications.insert(0, notification);
       notifyListeners();

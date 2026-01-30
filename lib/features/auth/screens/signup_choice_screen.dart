@@ -31,7 +31,6 @@ class SignupChoiceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Step Indicators
             _buildStepIndicator(
               context,
               '1',
@@ -58,7 +57,6 @@ class SignupChoiceScreen extends StatelessWidget {
 
             const SizedBox(height: 48),
 
-            // Info box
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -82,7 +80,6 @@ class SignupChoiceScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // ONLY Google signup button
             CustomButton(
               text: 'Continue with Google',
               onPressed: () =>

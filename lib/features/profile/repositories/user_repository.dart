@@ -15,16 +15,11 @@ class UserRepository {
 
   UserRepository(this._apiService);
 
-  // =====================================================
-  // PROFILE VIEWS
-  // =====================================================
 
-  /// Record a profile view
-  /// POST /users/view/:userId
   Future<ApiResponse<void>> recordProfileView(String userId) async {
     try {
       final response = await _apiService.dio.post(
-        '${AppConstants.users}/view/$userId', // Assumes users base is /api/users
+        '${AppConstants.users}/view/$userId',
         options: Options(extra: {'withCredentials': true}),
       );
 
@@ -40,8 +35,6 @@ class UserRepository {
     }
   }
 
-  /// Get profile viewers
-  /// GET /users/viewers
   Future<ApiResponse<List<ProfileViewer>>> getProfileViewers() async {
     try {
       final response = await _apiService.dio.get(
@@ -67,8 +60,6 @@ class UserRepository {
     }
   }
 
-  /// Upload photos with proper MIME type
-  /// POST /users/upload-photos (multipart/form-data)
   Future<ApiResponse<List<Photo>>> uploadPhotos(
     List<File> photos, {
     void Function(int sent, int total)? onProgress,
@@ -79,7 +70,6 @@ class UserRepository {
       for (var file in photos) {
         final fileName = file.path.split(Platform.pathSeparator).last;
 
-        // Detect MIME type
         final mimeType = lookupMimeType(file.path) ?? 'image/jpeg';
         final mimeTypeParts = mimeType.split('/');
 
@@ -98,7 +88,7 @@ class UserRepository {
       }
 
       final response = await _apiService.dio.post(
-        '/users/upload-photos',
+        AppConstants.usersUploadPhotos,
         data: formData,
         onSendProgress: onProgress,
         options: Options(headers: {'Content-Type': 'multipart/form-data'}),
@@ -133,8 +123,6 @@ class UserRepository {
     }
   }
 
-  /// Delete a photo
-  /// DELETE /users/photos/:photoId
   Future<ApiResponse<List<Photo>>> deletePhoto(String photoId) async {
     try {
       debugPrint('[USER_REPO] Deleting photo: $photoId');
@@ -174,8 +162,6 @@ class UserRepository {
     }
   }
 
-  /// Set a photo as profile
-  /// PATCH /users/photos/:photoId/set-profile
   Future<ApiResponse<List<Photo>>> setAsProfilePhoto(String photoId) async {
     try {
       debugPrint('[USER_REPO] Setting profile photo: $photoId');
@@ -215,7 +201,27 @@ class UserRepository {
     }
   }
 
-  // Get current user
+  Future<ApiResponse<void>> updateUserLocation(double lat, double lng) async {
+    try {
+      debugPrint('[USER_REPO] Updating location: $lat, $lng');
+      final response = await _apiService.dio.patch(
+        AppConstants.usersLocation,
+        data: {'latitude': lat, 'longitude': lng},
+        options: Options(extra: {'withCredentials': true}),
+      );
+
+      return response.statusCode == 200
+          ? ApiResponse(success: true, message: 'Location updated successfully')
+          : ApiResponse(
+              success: false,
+              message: response.data['message'] ?? 'Failed to update location',
+            );
+    } catch (e) {
+      debugPrint('[USER_REPO] Update location error: $e');
+      return ApiResponse(success: false, message: 'Network error');
+    }
+  }
+
   Future<ApiResponse<User>> getCurrentUser() async {
     try {
       debugPrint('[USER_REPO] ========== GET CURRENT USER ==========');
@@ -245,14 +251,13 @@ class UserRepository {
     }
   }
 
-  // Update profile details
   Future<ApiResponse<User>> updateProfile(Map<String, dynamic> data) async {
     try {
       debugPrint('[USER_REPO] ========== UPDATE PROFILE ==========');
 
       final response = await _apiService.dio.post(
         AppConstants
-            .authRegisterDetails, // Ensure this constant exists/is correct
+            .authRegisterDetails,
         data: data,
         options: Options(extra: {'withCredentials': true}),
       );
@@ -276,8 +281,6 @@ class UserRepository {
     }
   }
 
-  /// Get user profile by username
-  /// GET /users/:username
   Future<ApiResponse<Map<String, dynamic>>> getUserByUsername(
     String username,
   ) async {

@@ -31,11 +31,8 @@ class BadgeProvider extends ChangeNotifier {
     _connectionsProvider.addListener(_updateConnectionCount);
     _notificationsProvider.addListener(_updateConnectionCount);
 
-    // Listen to socket notifications
-    // NOTE: This overrides any previous listener. Ensure this is the only one or handle chaining if needed.
     _socketService.onNotificationReceived = _handleSocketNotification;
 
-    // Initial update
     _updateChatCount();
     _updateConnectionCount();
   }
@@ -70,14 +67,12 @@ class BadgeProvider extends ChangeNotifier {
     debugPrint('[BadgeProvider] Received socket notification: $data');
     final type = data['type'];
 
-    // Route incoming requests to ConnectionsProvider for Invites tab
     if (type == 'connection_request' ||
         type == 'photo_access_request' ||
         type == 'details_access_request') {
       debugPrint('[BadgeProvider] Routing $type to ConnectionsProvider');
       _connectionsProvider.handleRealTimeRequest(data);
     } else {
-      // Route granted/accepted notifications to NotificationsProvider for Notifications tab
       debugPrint('[BadgeProvider] Routing $type to NotificationsProvider');
       final model = NotificationModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
