@@ -1,4 +1,3 @@
-/// Represents a chat message
 class Message {
   final String? id;
   final String senderId;
@@ -6,7 +5,7 @@ class Message {
   final String receiverId;
   final String message;
   final MessageType type;
-  final String? mediaUrl; // URL for image messages
+  final String? mediaUrl;
   final DateTime createdAt;
   final bool isRead;
 

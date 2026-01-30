@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/services/api_service.dart';
 import '../models/feed_response.dart';
@@ -8,14 +9,17 @@ class FeedRepository {
 
   FeedRepository(this._apiService);
 
-  Future<ApiResponse<FeedResponse>> getFeed({String? cursor}) async {
+  Future<ApiResponse<FeedResponse>> getFeed({
+    String? cursor,
+    String? viewAs,
+  }) async {
     try {
-      final queryParams = cursor != null
-          ? {'cursor': cursor, 'full': true}
-          : <String, dynamic>{'full': true};
+      final queryParams = <String, dynamic>{'full': true};
+      if (cursor != null) queryParams['cursor'] = cursor;
+      if (viewAs != null) queryParams['viewAs'] = viewAs;
 
       final response = await _apiService.dio.get(
-        '/users/feed',
+        AppConstants.usersFeed,
         queryParameters: queryParams,
       );
 

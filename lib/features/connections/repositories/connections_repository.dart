@@ -8,10 +8,6 @@ class ConnectionsRepository {
 
   ConnectionsRepository(this._apiService);
 
-  // =====================================================
-  // SEND CONNECTION REQUEST
-  // POST /connections/send
-  // =====================================================
   Future<ApiResponse<Map<String, dynamic>>> sendConnectionRequest(
     String targetUsername,
   ) async {
@@ -32,10 +28,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // ACCEPT CONNECTION
-  // POST /connections/accept
-  // =====================================================
   Future<ApiResponse<void>> acceptConnection(String requestId) async {
     try {
       final response = await _apiService.dio.post(
@@ -52,10 +44,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // REJECT CONNECTION
-  // POST /connections/reject
-  // =====================================================
   Future<ApiResponse<void>> rejectConnection(String requestId) async {
     try {
       final response = await _apiService.dio.post(
@@ -72,13 +60,9 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // CANCEL REQUEST (connection / photo / details)
-  // POST /connections/cancel
-  // =====================================================
   Future<ApiResponse<void>> cancelRequest({
     required String targetUsername,
-    required String type, // connection | photo | details
+    required String type,
   }) async {
     try {
       final response = await _apiService.dio.post(
@@ -95,10 +79,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // REQUEST PHOTO ACCESS
-  // POST /connections/request-photo-access
-  // =====================================================
   Future<ApiResponse<String>> requestPhotoAccess(String targetUsername) async {
     try {
       final response = await _apiService.dio.post(
@@ -108,7 +88,6 @@ class ConnectionsRepository {
       );
 
       if (response.statusCode == 200) {
-        // Parse status from response: data.status or data.data.status
         final status =
             response.data['data']?['status'] ??
             response.data['status'] ??
@@ -126,10 +105,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // REQUEST DETAILS ACCESS
-  // POST /connections/request-details-access
-  // =====================================================
   Future<ApiResponse<void>> requestDetailsAccess(String targetUsername) async {
     try {
       final response = await _apiService.dio.post(
@@ -146,13 +121,9 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // RESPOND TO PHOTO REQUEST
-  // POST /connections/respond-photo
-  // =====================================================
   Future<ApiResponse<void>> respondPhotoRequest({
     required String requestId,
-    required String action, // grant | reject
+    required String action,
   }) async {
     try {
       final response = await _apiService.dio.post(
@@ -169,10 +140,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // RESPOND TO DETAILS REQUEST
-  // POST /connections/respond-details
-  // =====================================================
   Future<ApiResponse<void>> respondDetailsRequest({
     required String requestId,
     required String action,
@@ -192,10 +159,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // GET INCOMING REQUESTS
-  // GET /connections/requests
-  // =====================================================
   Future<ApiResponse<List<dynamic>>> getIncomingRequests() async {
     try {
       final response = await _apiService.dio.get(
@@ -213,10 +176,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // GET MY CONNECTIONS
-  // GET /connections/my-connections
-  // =====================================================
   Future<ApiResponse<List<dynamic>>> getMyConnections() async {
     try {
       final response = await _apiService.dio.get(
@@ -234,11 +193,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // GET NOTIFICATIONS (Accepted History)
-  // GET /connections/notifications
-  // Response: { success: true, data: [ { _id, type, status, otherUser: {...}, updatedAt } ] }
-  // =====================================================
   Future<ApiResponse<List<dynamic>>> getNotifications() async {
     try {
       final response = await _apiService.dio.get(
@@ -256,11 +210,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // CHECK CONNECTION STATUS
-  // GET /connections/status/:username
-  // Response: { status: photoAccessStatus, friendStatus: connectionStatus, detailsStatus: detailsAccessStatus }
-  // =====================================================
   Future<ApiResponse<Map<String, String>>> getConnectionStatus(
     String username,
   ) async {
@@ -288,9 +237,6 @@ class ConnectionsRepository {
     }
   }
 
-  // =====================================================
-  // ERROR HANDLING
-  // =====================================================
   ApiResponse<T> _error<T>(Response response) {
     return ApiResponse(
       success: false,

@@ -22,7 +22,6 @@ class ContactDetailsForm extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Read-only Phone Number
           TextFormField(
             initialValue: provider.formData['phone'],
             decoration: const InputDecoration(
@@ -35,7 +34,6 @@ class ContactDetailsForm extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Read-only Email
           TextFormField(
             initialValue: provider.formData['email'],
             decoration: const InputDecoration(

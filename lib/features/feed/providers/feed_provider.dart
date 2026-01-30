@@ -13,6 +13,7 @@ class FeedProvider extends ChangeNotifier {
   bool _isLoadingMore = false;
   String? _error;
   bool _hasMore = true;
+  String? _currentViewAs;
 
   List<FeedUser> get users => _users;
   bool get isLoading => _isLoading;
@@ -20,9 +21,16 @@ class FeedProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasMore => _hasMore;
   bool get isEmpty => _users.isEmpty && !_isLoading;
+  String? get currentViewAs => _currentViewAs;
 
-  Future<void> loadFeed() async {
+  Future<void> loadFeed({String? viewAs}) async {
     if (_isLoading) return;
+
+    if (viewAs != _currentViewAs) {
+      _users = [];
+      _nextCursor = null;
+      _currentViewAs = viewAs;
+    }
 
     _isLoading = true;
     _error = null;
@@ -30,7 +38,9 @@ class FeedProvider extends ChangeNotifier {
 
     debugPrint('[FEED] Loading initial feed...');
 
-    final response = await _feedRepository.getFeed();
+    debugPrint('[FEED] Loading initial feed... ViewAs: $_currentViewAs');
+
+    final response = await _feedRepository.getFeed(viewAs: _currentViewAs);
 
     if (response.success && response.data != null) {
       _users = response.data!.users;
@@ -54,7 +64,10 @@ class FeedProvider extends ChangeNotifier {
 
     debugPrint('[FEED] Loading more with cursor: $_nextCursor');
 
-    final response = await _feedRepository.getFeed(cursor: _nextCursor);
+    final response = await _feedRepository.getFeed(
+      cursor: _nextCursor,
+      viewAs: _currentViewAs,
+    );
 
     if (response.success && response.data != null) {
       _users.addAll(response.data!.users);

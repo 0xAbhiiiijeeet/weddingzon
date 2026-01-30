@@ -6,16 +6,13 @@ import '../../features/notifications/models/notification_model.dart';
 class NotificationStorageService {
   static const String _notificationsKey = 'user_notifications';
 
-  /// Save a new notification to local storage
   Future<void> saveNotification(NotificationModel notification) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final notifications = await getNotifications();
 
-      // Add new notification to the beginning of the list
       notifications.insert(0, notification);
 
-      // Limit to 50 stored notifications to manage size
       if (notifications.length > 50) {
         notifications.removeLast();
       }
@@ -33,7 +30,6 @@ class NotificationStorageService {
     }
   }
 
-  /// Retrieve all stored notifications
   Future<List<NotificationModel>> getNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -51,7 +47,6 @@ class NotificationStorageService {
     }
   }
 
-  /// Mark a notification as read
   Future<void> markAsRead(String id) async {
     try {
       final notifications = await getNotifications();
@@ -71,7 +66,6 @@ class NotificationStorageService {
     }
   }
 
-  /// Clear all notifications
   Future<void> clearNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();

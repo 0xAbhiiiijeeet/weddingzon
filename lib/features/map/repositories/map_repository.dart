@@ -20,7 +20,7 @@ class MapRepository {
       );
 
       final response = await _apiService.dio.get(
-        '${AppConstants.baseUrl}/users/nearby',
+        AppConstants.usersNearby,
         queryParameters: {
           'latitude': latitude,
           'longitude': longitude,
@@ -51,7 +51,7 @@ class MapRepository {
   Future<void> updateLocation(double latitude, double longitude) async {
     try {
       await _apiService.dio.patch(
-        '${AppConstants.baseUrl}/users/location',
+        AppConstants.usersLocation,
         data: {'latitude': latitude, 'longitude': longitude},
       );
     } catch (e) {

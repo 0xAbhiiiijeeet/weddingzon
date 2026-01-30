@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
-/// Service to persist user data locally using SharedPreferences
 class UserStorageService {
   static const String _userKey = 'cached_user';
 
-  /// Save user to SharedPreferences
   static Future<void> saveUser(User user) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -19,7 +17,6 @@ class UserStorageService {
     }
   }
 
-  /// Load user from SharedPreferences
   static Future<User?> loadUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -42,7 +39,6 @@ class UserStorageService {
     }
   }
 
-  /// Clear user from SharedPreferences
   static Future<void> clearUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -53,7 +49,6 @@ class UserStorageService {
     }
   }
 
-  /// Check if a cached user exists
   static Future<bool> hasUser() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey(_userKey);

@@ -3,17 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/feed_user.dart';
 import '../providers/connection_provider.dart';
 import '../../../shared/widgets/image_viewer.dart';
 import '../../profile/repositories/user_repository.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/routes/app_routes.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String username;
+  final bool readOnly;
 
-  const UserProfileScreen({super.key, required this.username});
+  const UserProfileScreen({
+    super.key,
+    required this.username,
+    this.readOnly = false,
+  });
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -28,6 +35,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint(
+      '[UserProfileScreen] initState - username: ${widget.username}, readOnly: ${widget.readOnly}',
+    );
     _loadUserProfile();
   }
 
@@ -56,10 +66,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _isLoading = false;
         });
 
-        // Fetch connection status
         if (mounted) {
           context.read<ConnectionProvider>().fetchStatus(widget.username);
-          // Record profile view
           userRepository.recordProfileView(_user!.id);
         }
       } else {
@@ -114,6 +122,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareProfile,
+            tooltip: 'Share Profile',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () => _loadUserProfile(refresh: true),
@@ -122,17 +137,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Section with Profile Photo and Basic Info
               _buildHeaderSection(),
 
               const SizedBox(height: 16),
 
-              // Main Content
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    // About Me Section
                     if (_user!.aboutMe != null && _user!.aboutMe!.isNotEmpty)
                       _buildSectionCard(
                         icon: Icons.person_outline,
@@ -143,10 +155,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                       ),
 
-                    // Photos Section
                     _buildPhotosSection(),
 
-                    // Details Sections - Always visible
                     _buildCareerSection(),
                     _buildFamilySection(),
                     _buildLifestyleSection(),
@@ -154,7 +164,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Action Buttons
                     _buildActionButtons(),
 
                     const SizedBox(height: 32),
@@ -175,7 +184,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profile Photo
           Stack(
             children: [
               CircleAvatar(
@@ -201,7 +209,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           const SizedBox(width: 20),
 
-          // Name and Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +243,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 const SizedBox(height: 12),
 
-                // Chips
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -546,6 +552,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildActionButtons() {
+    debugPrint('═══════════════════════════════════════════════════════');
+    debugPrint('[UserProfileScreen] _buildActionButtons called');
+    debugPrint('[UserProfileScreen] widget.readOnly = ${widget.readOnly}');
+    debugPrint('[UserProfileScreen] widget.username = ${widget.username}');
+    debugPrint('═══════════════════════════════════════════════════════');
+
+    // Read-only mode: Don't show any buttons
+    if (widget.readOnly) {
+      debugPrint(
+        '[UserProfileScreen] ✅ HIDING BUTTONS - readOnly mode is TRUE',
+      );
+      return const SizedBox.shrink();
+    }
+
+    debugPrint(
+      '[UserProfileScreen] ⚠️ SHOWING BUTTONS - readOnly mode is FALSE',
+    );
+
+    // Normal mode: Show connect/chat buttons
     return Consumer<ConnectionProvider>(
       builder: (context, connectionProvider, _) {
         final connectionStatus = connectionProvider.getConnectionStatus(
@@ -561,7 +586,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         if (connectionStatus == 'accepted') {
           return Column(
             children: [
-              // Connected badge
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -587,7 +611,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Chat button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -679,7 +702,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           );
         }
 
-        // Default: Show Connect button
         return SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
@@ -709,5 +731,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         );
       },
     );
+  }
+
+  void _shareProfile() {
+    final profileUrl = AppConstants.getProfileDeepLink(_user!.username);
+    final shareText =
+        'Check out ${_user!.fullName}\'s profile on WeddingZon!\n$profileUrl';
+
+    Share.share(shareText, subject: '${_user!.fullName} - WeddingZon Profile');
   }
 }

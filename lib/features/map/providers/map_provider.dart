@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/services/location_service.dart';
 import '../models/nearby_user_model.dart';
 import '../repositories/map_repository.dart';
 
@@ -13,29 +14,31 @@ class MapProvider extends ChangeNotifier {
   List<NearbyUser> _nearbyUsers = [];
   bool _isLoading = false;
   LatLng? _currentLocation;
-  int _radius = 50; // In km
+  int _radius = 50;
   String? _error;
+  bool _isPermissionDeniedForever = false;
 
-  // Getters
   List<NearbyUser> get nearbyUsers => _nearbyUsers;
   bool get isLoading => _isLoading;
   LatLng? get currentLocation => _currentLocation;
   int get radius => _radius;
   String? get error => _error;
+  bool get isPermissionDeniedForever => _isPermissionDeniedForever;
 
   Future<void> initLocation() async {
     _isLoading = true;
     _error = null;
+    _isPermissionDeniedForever = false;
     notifyListeners();
 
     try {
       bool serviceEnabled;
       LocationPermission permission;
 
-      // Test if location services are enabled.
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _error = 'Location services are disabled.';
+        _error =
+            'Location services are disabled. Please enable location services.';
         _isLoading = false;
         notifyListeners();
         return;
@@ -54,7 +57,8 @@ class MapProvider extends ChangeNotifier {
 
       if (permission == LocationPermission.deniedForever) {
         _error =
-            'Location permissions are permanently denied, we cannot request permissions.';
+            'Location permissions are permanently denied. Please enable them in settings.';
+        _isPermissionDeniedForever = true;
         _isLoading = false;
         notifyListeners();
         return;
@@ -63,10 +67,8 @@ class MapProvider extends ChangeNotifier {
       final position = await Geolocator.getCurrentPosition();
       _currentLocation = LatLng(position.latitude, position.longitude);
 
-      // Update backend with current location
       await _repository.updateLocation(position.latitude, position.longitude);
 
-      // Fetch initial users
       await fetchNearbyUsers();
     } catch (e) {
       _error = 'Error getting location: $e';
@@ -92,13 +94,61 @@ class MapProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getSuggestions(String query) async {
+    if (query.length < 3) return [];
+
+    try {
+      final locationService = LocationService();
+      return await locationService.getAddressSuggestions(query);
+    } catch (e) {
+      debugPrint('[MapProvider] Error getting suggestions: $e');
+      return [];
+    }
+  }
+
+  Future<bool> searchLocation(String query) async {
+    debugPrint('[MapProvider] Searching for: $query');
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final locationService = LocationService();
+      final position = await locationService.getCoordinatesFromAddress(query);
+
+      if (position != null) {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+        debugPrint('[MapProvider] Found location: $_currentLocation');
+
+        await fetchNearbyUsers();
+        return true;
+      } else {
+        _error = 'Location not found';
+        return false;
+      }
+    } catch (e) {
+      _error = 'Error searching location: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> moveToLocation(double lat, double lng) async {
+    _currentLocation = LatLng(lat, lng);
+    debugPrint('[MapProvider] Moved to location: $_currentLocation');
+    await fetchNearbyUsers();
+    notifyListeners();
+  }
+
   Timer? _debounce;
 
   Future<void> updateRadius(int newRadius) async {
     if (_radius == newRadius) return;
 
     _radius = newRadius;
-    notifyListeners(); // Update UI immediately for slider
+    notifyListeners();
 
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 

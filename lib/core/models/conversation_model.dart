@@ -1,4 +1,3 @@
-/// Represents a conversation in the chat list
 class Conversation {
   final String userId;
   final String username;
@@ -20,7 +19,6 @@ class Conversation {
     this.updatedAt,
   });
 
-  /// Returns the display name (full name if available, otherwise username)
   String get displayName {
     final fullName = '${firstName ?? ''} ${lastName ?? ''}'.trim();
     return fullName.isNotEmpty ? fullName : username;

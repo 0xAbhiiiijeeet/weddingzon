@@ -10,7 +10,6 @@ class UserCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final String username = user['username'] ?? 'Unknown';
     final String profilePhoto = user['profilePhoto'] ?? '';
-    // Handle both snake_case and camelCase field names
     final String firstName = user['first_name'] ?? user['firstName'] ?? '';
     final String lastName = user['last_name'] ?? user['lastName'] ?? '';
     final String fullName = '$firstName $lastName'.trim();
@@ -30,7 +29,6 @@ class UserCardWidget extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Profile photo
               CircleAvatar(
                 radius: 40,
                 backgroundImage: profilePhoto.isNotEmpty
@@ -50,7 +48,6 @@ class UserCardWidget extends StatelessWidget {
               ),
               const SizedBox(width: 16),
 
-              // User info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +119,6 @@ class UserCardWidget extends StatelessWidget {
                 ),
               ),
 
-              // Arrow icon
               const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),

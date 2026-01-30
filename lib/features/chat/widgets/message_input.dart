@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSendMessage;
-  final Function(List<File>) onSendImages; // Changed to accept List<File>
+  final Function(List<File>) onSendImages;
   final VoidCallback? onTypingStarted;
   final VoidCallback? onTypingStopped;
   final bool isSending;
@@ -43,7 +43,6 @@ class _MessageInputState extends State<MessageInput> {
         widget.onTypingStopped?.call();
       }
     } else if (hasText) {
-      // Still typing, reset timer
       widget.onTypingStarted?.call();
     }
   }
@@ -84,15 +83,13 @@ class _MessageInputState extends State<MessageInput> {
       List<XFile> images = [];
 
       if (source == ImageSource.gallery) {
-        // Pick multiple images from gallery
         images = await _picker.pickMultiImage(
           maxWidth: 1024,
           maxHeight: 1024,
           imageQuality: 85,
-          limit: 10, // Limit to 10 images
+          limit: 10,
         );
       } else {
-        // Pick single image from camera
         final XFile? image = await _picker.pickImage(
           source: source,
           maxWidth: 1024,
@@ -149,14 +146,12 @@ class _MessageInputState extends State<MessageInput> {
       child: SafeArea(
         child: Row(
           children: [
-            // Image picker button
             IconButton(
               onPressed: widget.isSending ? null : _pickImages,
               icon: const Icon(Icons.image_outlined),
               color: theme.colorScheme.primary,
             ),
 
-            // Text input
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -184,7 +179,6 @@ class _MessageInputState extends State<MessageInput> {
 
             const SizedBox(width: 8),
 
-            // Send button
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               child: widget.isSending

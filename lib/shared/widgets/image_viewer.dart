@@ -48,22 +48,15 @@ class _ImageViewerState extends State<ImageViewer> {
     super.dispose();
   }
 
-  /// Determine if a photo should be shown blurred
   bool _shouldBlur(Photo photo) {
-    // Don't blur if user has access or if it's a profile photo
     if (widget.hasAccess || photo.isProfile) {
       return false;
     }
-    // Blur non-profile photos without access
-    // We default to true to match ProfileCard logic where all non-profile
-    // photos are treated as restricted if access is not granted.
     return true;
   }
 
-  /// Get the appropriate URL to display
   String _getDisplayUrl(Photo photo) {
     if (_shouldBlur(photo)) {
-      // Always return original URL
       return photo.url;
     }
     return photo.url;
@@ -75,7 +68,6 @@ class _ImageViewerState extends State<ImageViewer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Image Gallery
           PhotoViewGallery.builder(
             scrollPhysics: const BouncingScrollPhysics(),
             builder: (BuildContext context, int index) {
@@ -147,7 +139,6 @@ class _ImageViewerState extends State<ImageViewer> {
                       },
                     ),
 
-                    // Client-side blur overlay
                     if (photoShouldBlur)
                       Positioned.fill(
                         child: ClipRect(
@@ -183,7 +174,6 @@ class _ImageViewerState extends State<ImageViewer> {
             },
           ),
 
-          // Top App Bar
           Positioned(
             top: 0,
             left: 0,
@@ -220,7 +210,6 @@ class _ImageViewerState extends State<ImageViewer> {
             ),
           ),
 
-          // Bottom Actions
           if (widget.canSetProfile || widget.canDelete)
             Positioned(
               bottom: 0,

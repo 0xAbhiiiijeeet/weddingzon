@@ -36,7 +36,6 @@ class _LandingScreenState extends State<LandingScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // App Branding
                   const FlutterLogo(size: 80),
                   const SizedBox(height: 32),
                   const Text(
@@ -55,7 +54,6 @@ class _LandingScreenState extends State<LandingScreen> {
                   ),
                   const SizedBox(height: 60),
 
-                  // Action Buttons
                   CustomButton(
                     text: 'Create Account',
                     onPressed: () =>
@@ -67,6 +65,24 @@ class _LandingScreenState extends State<LandingScreen> {
                     isOutlined: true,
                     onPressed: () =>
                         Navigator.pushNamed(context, AppRoutes.signInChoice),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  TextButton.icon(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, AppRoutes.franchiseLogin),
+                    icon: const Icon(Icons.person, size: 20),
+                    label: const Text(
+                      'Login with Username & Password',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.deepPurple,
+                    ),
                   ),
                 ],
               ),

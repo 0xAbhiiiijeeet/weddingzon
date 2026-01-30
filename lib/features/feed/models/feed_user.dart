@@ -19,7 +19,6 @@ class FeedUser {
   final String? maritalStatus;
   final String? motherTongue;
 
-  // Family fields
   final String? fatherStatus;
   final String? motherStatus;
   final int? brothers;
@@ -30,7 +29,6 @@ class FeedUser {
   final String? annualIncome;
   final String? familyLocation;
 
-  // Education & Career fields
   final String? highestEducation;
   final String? educationalDetails;
   final String? employedIn;
@@ -38,7 +36,6 @@ class FeedUser {
   final String? workingSector;
   final String? workingLocation;
 
-  // Lifestyle fields
   final String? eatingHabits;
   final String? smokingHabits;
   final String? drinkingHabits;
@@ -49,7 +46,6 @@ class FeedUser {
   final String? physicalStatus;
   final List<String>? hobbies;
 
-  // Connection status (from feed/profile response)
   final String? connectionStatus;
   final String? photoRequestStatus;
 
@@ -71,7 +67,6 @@ class FeedUser {
     this.height,
     this.maritalStatus,
     this.motherTongue,
-    // Family
     this.fatherStatus,
     this.motherStatus,
     this.brothers,
@@ -81,14 +76,12 @@ class FeedUser {
     this.familyValues,
     this.annualIncome,
     this.familyLocation,
-    // Career
     this.highestEducation,
     this.educationalDetails,
     this.employedIn,
     this.personalIncome,
     this.workingSector,
     this.workingLocation,
-    // Lifestyle
     this.eatingHabits,
     this.smokingHabits,
     this.drinkingHabits,
@@ -98,12 +91,10 @@ class FeedUser {
     this.livingStatus,
     this.physicalStatus,
     this.hobbies,
-    // Connection
     this.connectionStatus,
     this.photoRequestStatus,
   });
 
-  // Computed full name
   String get fullName {
     if (firstName != null && lastName != null) {
       return '$firstName $lastName';
@@ -111,7 +102,6 @@ class FeedUser {
     return firstName ?? lastName ?? username;
   }
 
-  // Calculate age from dob
   int? get age {
     if (dob == null) return null;
     try {
@@ -128,7 +118,6 @@ class FeedUser {
     }
   }
 
-  // Location string
   String? get location {
     final parts = <String>[];
     if (city != null) parts.add(city!);
@@ -160,7 +149,6 @@ class FeedUser {
       height: json['height'],
       maritalStatus: json['maritalStatus'] ?? json['marital_status'],
       motherTongue: json['motherTongue'] ?? json['mother_tongue'],
-      // Family
       fatherStatus: json['fatherStatus'] ?? json['father_status'],
       motherStatus: json['motherStatus'] ?? json['mother_status'],
       brothers: json['brothers'],
@@ -170,7 +158,6 @@ class FeedUser {
       familyValues: json['familyValues'] ?? json['family_values'],
       annualIncome: json['annualIncome'] ?? json['annual_income'],
       familyLocation: json['familyLocation'] ?? json['family_location'],
-      // Career
       highestEducation: json['highestEducation'] ?? json['highest_education'],
       educationalDetails:
           json['educationalDetails'] ?? json['educational_details'],
@@ -178,7 +165,6 @@ class FeedUser {
       personalIncome: json['personalIncome'] ?? json['personal_income'],
       workingSector: json['workingSector'] ?? json['working_sector'],
       workingLocation: json['workingLocation'] ?? json['working_location'],
-      // Lifestyle
       eatingHabits: json['eatingHabits'] ?? json['eating_habits'],
       smokingHabits: json['smokingHabits'] ?? json['smoking_habits'],
       drinkingHabits: json['drinkingHabits'] ?? json['drinking_habits'],
@@ -188,7 +174,6 @@ class FeedUser {
       livingStatus: json['livingStatus'] ?? json['living_status'],
       physicalStatus: json['physicalStatus'] ?? json['physical_status'],
       hobbies: (json['hobbies'] as List<dynamic>?)?.cast<String>(),
-      // Connection
       connectionStatus: json['connectionStatus'],
       photoRequestStatus: json['photoRequestStatus'],
     );
@@ -213,7 +198,6 @@ class FeedUser {
       'height': height,
       'marital_status': maritalStatus,
       'mother_tongue': motherTongue,
-      // Family
       'father_status': fatherStatus,
       'mother_status': motherStatus,
       'brothers': brothers,
@@ -223,14 +207,12 @@ class FeedUser {
       'family_values': familyValues,
       'annual_income': annualIncome,
       'family_location': familyLocation,
-      // Career
       'highest_education': highestEducation,
       'educational_details': educationalDetails,
       'employed_in': employedIn,
       'personal_income': personalIncome,
       'working_sector': workingSector,
       'working_location': workingLocation,
-      // Lifestyle
       'eating_habits': eatingHabits,
       'smoking_habits': smokingHabits,
       'drinking_habits': drinkingHabits,
@@ -240,7 +222,6 @@ class FeedUser {
       'living_status': livingStatus,
       'physical_status': physicalStatus,
       'hobbies': hobbies,
-      // Connection
       'connectionStatus': connectionStatus,
       'photoRequestStatus': photoRequestStatus,
     };

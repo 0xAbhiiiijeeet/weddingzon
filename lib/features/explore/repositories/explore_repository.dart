@@ -41,8 +41,6 @@ class ExploreRepository {
     }
   }
 
-  /// Search users with query
-  /// GET /api/users/search?q=query&page=1&limit=20
   Future<ApiResponse<List<dynamic>>> searchUsers({
     required String query,
     int page = 1,
@@ -73,8 +71,6 @@ class ExploreRepository {
     }
   }
 
-  /// Get feed with filters
-  /// GET /api/users/search with filter parameters
   Future<ApiResponse<List<dynamic>>> getFeedWithFilters({
     required Map<String, dynamic> filters,
     int page = 1,

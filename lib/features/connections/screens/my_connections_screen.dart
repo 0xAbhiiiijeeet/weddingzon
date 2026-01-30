@@ -77,8 +77,6 @@ class _MyConnectionsScreenState extends State<MyConnectionsScreen> {
         : '$firstName $lastName';
     final profilePhoto = user['profilePhoto'];
     final occupation = user['occupation'] ?? 'Occupation not set';
-    // Handle location based on available fields from API response
-    // Often it might be city, state
     final city = user['city'];
     final state = user['state'];
     final location = [
@@ -94,7 +92,6 @@ class _MyConnectionsScreenState extends State<MyConnectionsScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Avatar
             GestureDetector(
               onTap: () => _viewProfile(username),
               child: CircleAvatar(
@@ -116,7 +113,6 @@ class _MyConnectionsScreenState extends State<MyConnectionsScreen> {
             ),
             const SizedBox(width: 16),
 
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +179,6 @@ class _MyConnectionsScreenState extends State<MyConnectionsScreen> {
               ),
             ),
 
-            // Button
             OutlinedButton(
               onPressed: () => _viewProfile(username),
               style: OutlinedButton.styleFrom(

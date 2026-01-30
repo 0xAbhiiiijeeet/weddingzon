@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import '../../../core/models/api_response.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/navigation_service.dart';
 import '../../../core/services/user_storage_service.dart';
@@ -9,6 +10,7 @@ import '../../../core/services/notification_service.dart';
 import '../../notifications/repositories/notification_repository.dart';
 
 import '../../../core/services/socket_service.dart';
+import '../../../core/services/deep_link_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthRepository _authRepository;
@@ -16,6 +18,7 @@ class AuthProvider with ChangeNotifier {
   final SocketService _socketService;
   final NotificationService _notificationService;
   final NotificationRepository _notificationRepository;
+  final DeepLinkService? _deepLinkService;
 
   User? _currentUser;
   bool _isLoading = false;
@@ -27,8 +30,9 @@ class AuthProvider with ChangeNotifier {
     this._navService,
     this._socketService,
     this._notificationService,
-    this._notificationRepository,
-  );
+    this._notificationRepository, {
+    DeepLinkService? deepLinkService,
+  }) : _deepLinkService = deepLinkService;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -94,7 +98,6 @@ class AuthProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint('[AUTH] Auth check error (likely network): $e');
-      // Network error - if we have cached user, use them
       if (_currentUser != null) {
         debugPrint('[AUTH] Using cached user due to network error');
         if (autoRoute) {
@@ -108,12 +111,15 @@ class AuthProvider with ChangeNotifier {
     _setCheckingAuth(false);
   }
 
-  Future<void> signInWithGoogle({required bool isSignup}) async {
+  Future<void> signInWithGoogle({
+    required bool isSignup,
+    int retryCount = 0,
+  }) async {
     _setLoading(true);
     isSignupFlow = isSignup;
 
     debugPrint(
-      '[AUTH] ========== GOOGLE ${isSignup ? 'SIGNUP' : 'LOGIN'} ==========',
+      '[AUTH] ========== GOOGLE ${isSignup ? 'SIGNUP' : 'LOGIN'} (Attempt ${retryCount + 1}) ==========',
     );
 
     try {
@@ -123,7 +129,6 @@ class AuthProvider with ChangeNotifier {
         _currentUser = response.data;
         await _saveUserLocally(_currentUser!);
 
-        // Register Notification Token
         await _registerNotificationToken();
 
         debugPrint('[AUTH] Google auth successful');
@@ -134,7 +139,6 @@ class AuthProvider with ChangeNotifier {
         );
 
         if (isSignup) {
-          // SIGNUP: Check if profile is already complete
           if (_currentUser!.isProfileComplete) {
             debugPrint('[AUTH] Profile already complete, routing to FEED');
             Fluttertoast.showToast(
@@ -142,9 +146,17 @@ class AuthProvider with ChangeNotifier {
               backgroundColor: Colors.green,
             );
             _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+
+            if (_deepLinkService?.pendingUsername != null) {
+              debugPrint(
+                '[AUTH] Found pending deep link: ${_deepLinkService!.pendingUsername}',
+              );
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _deepLinkService.navigateToPendingProfile();
+              });
+            }
           } else if (_currentUser!.phoneNumber != null &&
               _currentUser!.phoneNumber!.isNotEmpty) {
-            // If mobile number exists, skip mobile signup and go to role selection (or next onboarding step)
             debugPrint(
               '[AUTH] Mobile number exists, treating as login (skipping mobile setup)',
             );
@@ -157,25 +169,125 @@ class AuthProvider with ChangeNotifier {
             _navService.pushNamedAndRemoveUntil(AppRoutes.mobileSignup);
           }
         } else {
-          // LOGIN: Route based on completion status
           routeUser(_currentUser!);
         }
       } else {
         debugPrint('[AUTH] Google auth failed: ${response.message}');
-        Fluttertoast.showToast(
-          msg: response.message ?? 'Google sign-in failed',
-          backgroundColor: Colors.red,
-        );
+        _handleGoogleSignInError(response.message, isSignup, retryCount);
       }
     } catch (e) {
       debugPrint('[AUTH] Exception: $e');
-      Fluttertoast.showToast(
-        msg: 'An error occurred during Google sign-in',
-        backgroundColor: Colors.red,
-      );
+      final errorString = e.toString().toLowerCase();
+
+      // Check if it's a network error
+      if (errorString.contains('network_error') ||
+          errorString.contains('apiexception: 7') ||
+          errorString.contains('network') ||
+          errorString.contains('connection')) {
+        debugPrint('[AUTH] Network error detected - will retry');
+        _handleNetworkError(isSignup, retryCount);
+      } else {
+        Fluttertoast.showToast(
+          msg: 'An error occurred during Google sign-in. Please try again.',
+          backgroundColor: Colors.red,
+          toastLength: Toast.LENGTH_LONG,
+        );
+      }
     }
 
     _setLoading(false);
+  }
+
+  void _handleGoogleSignInError(
+    String? message,
+    bool isSignup,
+    int retryCount,
+  ) {
+    if (message != null &&
+        (message.contains('network') || message.contains('connection'))) {
+      _handleNetworkError(isSignup, retryCount);
+    } else {
+      Fluttertoast.showToast(
+        msg: message ?? 'Google sign-in failed',
+        backgroundColor: Colors.red,
+        toastLength: Toast.LENGTH_LONG,
+      );
+    }
+  }
+
+  void _handleNetworkError(bool isSignup, int retryCount) {
+    if (retryCount < 2) {
+      // Allow up to 3 attempts (0, 1, 2)
+      Fluttertoast.showToast(
+        msg: 'Network error. Retrying... (${retryCount + 1}/3)',
+        backgroundColor: Colors.orange,
+        toastLength: Toast.LENGTH_SHORT,
+      );
+
+      // Retry after a short delay
+      Future.delayed(const Duration(seconds: 2), () {
+        signInWithGoogle(isSignup: isSignup, retryCount: retryCount + 1);
+      });
+    } else {
+      // Max retries reached
+      Fluttertoast.showToast(
+        msg:
+            'Network error. Please check your internet connection and try again.',
+        backgroundColor: Colors.red,
+        toastLength: Toast.LENGTH_LONG,
+      );
+    }
+  }
+
+  String? _error;
+
+  String? get error => _error;
+  User? get user => _currentUser;
+
+  Future<bool> loginWithPassword(String username, String password) async {
+    _setLoading(true);
+    _error = null;
+    debugPrint('[AUTH] ========== PASSWORD LOGIN ==========');
+    debugPrint('[AUTH] 🔵 Attempting login for username: $username');
+
+    try {
+      final response = await _authRepository.loginWithPassword(
+        username,
+        password,
+      );
+
+      if (response.success && response.data != null) {
+        _currentUser = response.data;
+        await _saveUserLocally(_currentUser!);
+
+        await _registerNotificationToken();
+
+        debugPrint('[AUTH] ✅ Login successful');
+        debugPrint('[AUTH] 👤 User: ${_currentUser?.email}');
+        debugPrint('[AUTH] 🎭 Role: ${_currentUser?.role}');
+
+        Fluttertoast.showToast(
+          msg: "Login successful",
+          backgroundColor: Colors.green,
+        );
+
+        routeUser(_currentUser!);
+        _setLoading(false);
+        return true;
+      } else {
+        _error = response.message ?? "Login failed";
+        debugPrint('[AUTH] ❌ Login failed: $_error');
+        Fluttertoast.showToast(msg: _error!, backgroundColor: Colors.red);
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      _error = "An error occurred during login";
+      debugPrint('[AUTH] ❌ Login Exception: $e');
+      Fluttertoast.showToast(msg: _error!, backgroundColor: Colors.red);
+      _setLoading(false);
+      return false;
+    }
   }
 
   Future<bool> sendOtp(String phoneNumber) async {
@@ -233,7 +345,6 @@ class AuthProvider with ChangeNotifier {
         _currentUser = response.data;
         await _saveUserLocally(_currentUser!);
 
-        // Register Notification Token
         await _registerNotificationToken();
 
         debugPrint('[AUTH] OTP verified');
@@ -250,16 +361,23 @@ class AuthProvider with ChangeNotifier {
         );
 
         if (isSignup) {
-          // SIGNUP: Check if profile is already complete
           if (_currentUser!.isProfileComplete) {
             debugPrint('[AUTH] Profile already complete, routing to FEED');
             _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+
+            if (_deepLinkService?.pendingUsername != null) {
+              debugPrint(
+                '[AUTH] Found pending deep link: ${_deepLinkService!.pendingUsername}',
+              );
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _deepLinkService.navigateToPendingProfile();
+              });
+            }
           } else {
             debugPrint('[AUTH] Profile incomplete, routing to onboarding');
             _navService.pushNamedAndRemoveUntil(AppRoutes.roleSelection);
           }
         } else {
-          // LOGIN: Route based on completion status
           routeUser(_currentUser!);
         }
       } else {
@@ -296,7 +414,147 @@ class AuthProvider with ChangeNotifier {
     debugPrint('[AUTH] Role: ${user.role}');
     debugPrint('[AUTH] isPhoneVerified: ${user.isPhoneVerified}');
     debugPrint('[AUTH] isProfileComplete: ${user.isProfileComplete}');
+    debugPrint('[AUTH] Franchise Status: ${user.franchiseStatus}');
+    debugPrint('[AUTH] Franchise Details: ${user.franchiseDetails}');
+    debugPrint('[AUTH] Vendor Status: ${user.vendorStatus}');
+    debugPrint('[AUTH] Vendor Details: ${user.vendorDetails}');
     debugPrint('[AUTH] =====================================');
+
+    if (user.role == 'franchise') {
+      debugPrint('[AUTH] User is Franchise Owner, checking status...');
+
+      // Check if franchise details are filled
+      if (user.franchiseDetails == null || user.franchiseDetails!.isEmpty) {
+        debugPrint('[AUTH] Franchise details not filled → Profile Form Screen');
+        Fluttertoast.showToast(
+          msg: 'Please complete your franchise profile',
+          backgroundColor: Colors.orange,
+        );
+        _navService.pushNamedAndRemoveUntil(AppRoutes.franchiseProfileForm);
+        return;
+      }
+
+      // Check franchise status
+      switch (user.franchiseStatus) {
+        case 'pending_payment':
+          debugPrint('[AUTH] Status: pending_payment → Payment Screen');
+          Fluttertoast.showToast(
+            msg: 'Please complete the activation payment',
+            backgroundColor: Colors.orange,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.franchisePayment);
+          return;
+
+        case 'pending_approval':
+          debugPrint('[AUTH] Status: pending_approval → Approval Screen');
+          Fluttertoast.showToast(
+            msg: 'Your franchise application is under review',
+            backgroundColor: Colors.blue,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.franchiseApproval);
+          return;
+
+        case 'rejected':
+          debugPrint('[AUTH] Status: rejected → Show error');
+          Fluttertoast.showToast(
+            msg:
+                'Your franchise application was rejected. Please contact support.',
+            backgroundColor: Colors.red,
+            toastLength: Toast.LENGTH_LONG,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.landing);
+          return;
+
+        case 'active':
+          debugPrint('[AUTH] Status: active → Dashboard');
+          _navService.pushNamedAndRemoveUntil(AppRoutes.franchiseDashboard);
+          return;
+
+        default:
+          debugPrint(
+            '[AUTH] Status: ${user.franchiseStatus ?? "null"} → Profile Form (no status set)',
+          );
+          Fluttertoast.showToast(
+            msg: 'Please complete your franchise registration',
+            backgroundColor: Colors.orange,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.franchiseProfileForm);
+          return;
+      }
+    }
+
+    // ==================== VENDOR ROLE HANDLING ====================
+    if (user.role == 'vendor') {
+      debugPrint('[AUTH] User is Vendor, checking status...');
+
+      // Check if vendor details are filled
+      if (user.vendorDetails == null || user.vendorDetails!.isEmpty) {
+        debugPrint(
+          '[AUTH] Vendor details not filled → Vendor Registration Screen',
+        );
+        Fluttertoast.showToast(
+          msg: 'Please complete your vendor registration',
+          backgroundColor: Colors.orange,
+        );
+        _navService.pushNamedAndRemoveUntil(AppRoutes.vendorRegistration);
+        return;
+      }
+
+      // Check vendor status
+      switch (user.vendorStatus) {
+        case 'pending_payment':
+          debugPrint('[AUTH] Status: pending_payment → Payment Screen');
+          Fluttertoast.showToast(
+            msg: 'Please complete the activation payment',
+            backgroundColor: Colors.orange,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.vendorPayment);
+          return;
+
+        case 'pending_approval':
+          debugPrint('[AUTH] Status: pending_approval → Approval Screen');
+          Fluttertoast.showToast(
+            msg: 'Your vendor application is under review',
+            backgroundColor: Colors.blue,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.vendorApproval);
+          return;
+
+        case 'rejected':
+          debugPrint('[AUTH] Status: rejected → Show error');
+          Fluttertoast.showToast(
+            msg:
+                'Your vendor application was rejected. Please contact support.',
+            backgroundColor: Colors.red,
+            toastLength: Toast.LENGTH_LONG,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.landing);
+          return;
+
+        case 'active':
+          debugPrint('[AUTH] Status: active → Vendor Dashboard');
+          _navService.pushNamedAndRemoveUntil(AppRoutes.vendorDashboard);
+          return;
+
+        default:
+          debugPrint(
+            '[AUTH] Status: ${user.vendorStatus ?? "null"} → Vendor Registration (no status set)',
+          );
+          Fluttertoast.showToast(
+            msg: 'Please complete your vendor registration',
+            backgroundColor: Colors.orange,
+          );
+          _navService.pushNamedAndRemoveUntil(AppRoutes.vendorRegistration);
+          return;
+      }
+    }
+    // ============================================================
+
+    if (user.role == 'member') {
+      debugPrint('[AUTH] User is Franchise Member, routing directly to Feed');
+      _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+      return;
+    }
 
     if (!user.isPhoneVerified) {
       debugPrint('[AUTH] Phone not verified, routing to phone auth');
@@ -305,7 +563,10 @@ class AuthProvider with ChangeNotifier {
         backgroundColor: Colors.orange,
       );
       _navService.pushNamedAndRemoveUntil(AppRoutes.mobileLogin);
-    } else if (!user.isProfileComplete) {
+      return;
+    }
+
+    if (!user.isProfileComplete) {
       debugPrint('[AUTH] Profile incomplete, routing to role selection');
       Fluttertoast.showToast(
         msg: 'Please complete your profile',
@@ -315,7 +576,19 @@ class AuthProvider with ChangeNotifier {
       _logMissingFields(user);
     } else {
       debugPrint('[AUTH] Profile complete, routing to FEED');
+
       _navService.pushNamedAndRemoveUntil(AppRoutes.feed);
+
+      if (_deepLinkService?.pendingUsername != null) {
+        debugPrint(
+          '[AUTH] Found pending deep link: ${_deepLinkService!.pendingUsername}',
+        );
+        debugPrint('[AUTH] Will navigate to profile after feed loads');
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _deepLinkService.navigateToPendingProfile();
+        });
+      }
     }
   }
 
@@ -328,6 +601,12 @@ class AuthProvider with ChangeNotifier {
     _currentUser = user;
     _saveUserLocally(user);
     debugPrint('[AUTH] Profile Complete: ${user.isProfileComplete}');
+
+    if (_deepLinkService != null) {
+      _deepLinkService.updateAuthStatus(true);
+      debugPrint('[AUTH] Updated deep link service: user is authenticated');
+    }
+
     notifyListeners();
   }
 
@@ -335,12 +614,16 @@ class AuthProvider with ChangeNotifier {
     debugPrint('[AUTH] ========== LOGOUT ==========');
 
     try {
-      // Disconnect socket BEFORE clearing user data
       _socketService.disconnect();
       debugPrint('[AUTH] Socket disconnected');
 
-      // Unregister Notification Token
       await _unregisterNotificationToken();
+
+      if (_deepLinkService != null) {
+        _deepLinkService.updateAuthStatus(false);
+        _deepLinkService.clearPendingUsername();
+        debugPrint('[AUTH] Updated deep link service: user is logged out');
+      }
 
       await _authRepository.logout();
       await UserStorageService.clearUser();
@@ -362,7 +645,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Refreshes the current user data from the server without triggering navigation
   Future<void> refreshUser() async {
     debugPrint('[AUTH] ========== REFRESH USER (NO NAV) ==========');
     try {
@@ -381,6 +663,30 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<ApiResponse<User>> getCurrentUser() async {
+    return await _authRepository.getCurrentUser();
+  }
+
+  Future<bool> updateProfile(Map<String, dynamic> data) async {
+    _setLoading(true);
+    try {
+      final response = await _authRepository.updateProfile(data);
+      if (response.success && response.data != null) {
+        updateUser(response.data!);
+        _setLoading(false);
+        return true;
+      } else {
+        Fluttertoast.showToast(msg: response.message ?? 'Update failed');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[AUTH] Update profile error: $e');
+      _setLoading(false);
+      return false;
+    }
+  }
+
   void _logMissingFields(User user) {
     debugPrint('[AUTH] ========== PROFILE FIELD STATUS ==========');
 
@@ -392,7 +698,6 @@ class AuthProvider with ChangeNotifier {
       }
     }
 
-    // Basic Details
     check('Date of Birth', user.dob, isRequired: true);
     check('Gender', user.gender, isRequired: true);
     check('Profile Created For', user.createdFor, isRequired: true);
@@ -403,25 +708,21 @@ class AuthProvider with ChangeNotifier {
     check('State', user.state, isRequired: true);
     check('City', user.city, isRequired: true);
 
-    // Family
     check('Father Status', user.fatherStatus, isRequired: true);
     check('Mother Status', user.motherStatus, isRequired: true);
     check('Family Status', user.familyStatus, isRequired: true);
     check('Family Type', user.familyType, isRequired: true);
     check('Family Values', user.familyValues, isRequired: true);
 
-    // Education & Career
     check('Highest Education', user.highestEducation, isRequired: true);
     check('Occupation', user.occupation, isRequired: true);
     check('Employed In', user.employedIn, isRequired: true);
     check('Annual Income', user.personalIncome, isRequired: true);
 
-    // Religion
     check('Religion', user.religion, isRequired: true);
     check('Community', user.community, isRequired: true);
     check('Sub-Community', user.subCommunity, isRequired: false);
 
-    // Lifestyle
     check('Appearance', user.appearance, isRequired: true);
     check('Living Status', user.livingStatus, isRequired: true);
     check('Eating Habits', user.eatingHabits, isRequired: true);
@@ -448,8 +749,7 @@ class AuthProvider with ChangeNotifier {
       final token = await _notificationService.getToken();
       if (token != null) {
         await _notificationRepository.unregisterToken(token);
-        await _notificationService
-            .deleteToken(); // Optional: delete local token
+        await _notificationService.deleteToken();
         debugPrint('[AUTH] Notification token unregistered');
       }
     } catch (e) {

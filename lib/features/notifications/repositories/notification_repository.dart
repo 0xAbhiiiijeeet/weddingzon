@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/services/api_service.dart';
 
 class NotificationRepository {
@@ -10,7 +11,7 @@ class NotificationRepository {
   Future<bool> registerToken(String token) async {
     try {
       final response = await _apiService.dio.post(
-        '/notifications/register-token',
+        AppConstants.notificationsRegister,
         data: {'token': token},
       );
 
@@ -24,7 +25,7 @@ class NotificationRepository {
   Future<bool> unregisterToken(String token) async {
     try {
       final response = await _apiService.dio.post(
-        '/notifications/unregister-token',
+        AppConstants.notificationsUnregister,
         data: {'token': token},
       );
 

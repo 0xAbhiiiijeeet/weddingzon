@@ -1,13 +1,11 @@
 class AppConstants {
-  static const String baseUrl =
-      'https://weddingzon-backend.onrender.com/api'; // Android Emulator localhost
+  static const String baseUrl = 'https://weddingzon-backend.onrender.com/api';
 
-  // Auth Constants
   static const String tokenKey = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
 
-  // Endpoints
   static const String authGoogle = '/auth/google';
+  static const String authLogin = '/auth/login';
   static const String authSendOtp = '/auth/send-otp';
   static const String authVerifyOtp = '/auth/verify-otp';
   static const String authMe = '/auth/me';
@@ -18,10 +16,9 @@ class AppConstants {
   static const String usersPhotos = '/users/photos';
   static const String usersFeed = '/users/feed';
   static const String usersSearch = '/users/search';
-  static const String usersProfile = '/users'; // GET /users/:username
-  static const String users = '/users'; // Base users endpoint
+  static const String usersProfile = '/users';
+  static const String users = '/users';
 
-  // Connections
   static const String connectionsSend = '/connections/send';
   static const String connectionsAccept = '/connections/accept';
   static const String connectionsReject = '/connections/reject';
@@ -43,16 +40,34 @@ class AppConstants {
 
   static const String connectionsStatus = '/connections/status';
 
-  // Chat
   static const String chatConversations = '/chat/conversations';
   static const String chatHistory = '/chat/history';
   static const String chatUpload = '/chat/upload';
   static const String chatMarkRead = '/chat/read';
 
-  // Socket.IO
   static const String socketUrl = 'https://weddingzon-backend.onrender.com';
 
-  // Admin
   static const String adminUsers = '/admin/users';
   static const String adminStats = '/admin/stats';
+
+  static const String franchiseCreateProfile = '/franchise/create-profile';
+  static const String franchiseProfiles = '/franchise/profiles';
+  static const String franchisePayment = '/franchise/payment';
+  static const String franchisePdf = '/franchise/custom-matches';
+
+  static const String notificationsRegister = '/notifications/register-token';
+  static const String notificationsUnregister =
+      '/notifications/unregister-token';
+
+  static const String usersNearby = '/users/nearby';
+  static const String usersLocation = '/users/location';
+
+  // Deep Link Configuration
+  static const String deepLinkDomain = 'dev.d34g4kpybwb3xb.amplifyapp.com';
+  static const String deepLinkScheme = 'https';
+
+  /// Generate a shareable deep link URL for a user profile
+  static String getProfileDeepLink(String username) {
+    return '$deepLinkScheme://$deepLinkDomain/$username';
+  }
 }

@@ -28,12 +28,10 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     super.initState();
     final uploadProvider = context.read<PhotoUploadProvider>();
 
-    // Clear completed items when entering screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       uploadProvider.clearCompleted();
     });
 
-    // Listen for upload completion to refresh user data
     uploadProvider.addListener(_onUploadStateChanged);
   }
 
@@ -52,10 +50,8 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     );
 
     if (_wasUploading && !isUploadingNow) {
-      // Batch finished (transitioned from uploading to not uploading)
       debugPrint('[PHOTO_MANAGER] Batch upload finished. Refreshing user...');
       context.read<AuthProvider>().refreshUser().then((_) {
-        // After refresh completes, clear the completed items
         provider.clearCompleted();
       });
     }
@@ -86,8 +82,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
           final serverPhotos = user.photos;
           final uploadQueue = uploadProvider.queue;
 
-          // Calculate total photos considering valid ones from server + pending/uploading/success from queue
-          // We exclude errors from count as they didn't succeed
           final validQueueCount = uploadQueue
               .where((i) => i.status != UploadStatus.error)
               .length;
@@ -138,7 +132,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                 ),
               ),
 
-              // Photos grid
               Expanded(
                 child: (serverPhotos.isEmpty && uploadQueue.isEmpty)
                     ? _buildEmptyState()
@@ -152,7 +145,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                               childAspectRatio: 0.75,
                             ),
                         children: [
-                          // 1. Show Server Photos (Existing)
                           ...serverPhotos.asMap().entries.map((entry) {
                             return _buildServerPhotoCard(
                               entry.value,
@@ -160,15 +152,7 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
                             );
                           }),
 
-                          // 2. Show Queue Items (Pending/Uploading/Error)
-                          // Note: Success items in queue might duplicate server photos if we just refreshed user
-                          // Ideally, we should filter out success items if they are already in serverPhotos
-                          // But for simplicity, we rely on the provider clearing completed items or manually handling it.
-                          // Here, we show all queue items to give feedback.
                           ...uploadQueue.map((item) {
-                            // If item is success, it should eventually be in serverPhotos after referesh.
-                            // We hide it here if we trust it's in serverPhotos, OR we show it until cleared.
-                            // Let's show it to be safe, user can see it "convert" or we clear it.
                             return _buildUploadCard(item);
                           }),
                         ],
@@ -274,19 +258,15 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
   }
 
   Widget _buildUploadCard(PhotoUploadItem item) {
-    // If successful, we might want to show the uploaded URL if available,
-    // or just the local file. Local file is faster/smoother.
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Image background
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.file(item.file, fit: BoxFit.cover),
         ),
 
-        // Overlay based on status
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -294,10 +274,8 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
           ),
         ),
 
-        // Status Indicator
         Center(child: _buildStatusIndicator(item)),
 
-        // Error / Retry actions
         if (item.status == UploadStatus.error)
           Positioned(
             bottom: 8,
@@ -367,7 +345,6 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
     final user = context.read<AuthProvider>().currentUser;
     if (user == null) return;
 
-    // Create unrestricted copies of photos for the viewer
     final unrestrictedPhotos = user.photos
         .map((p) => p.copyWith(restricted: false, isProfile: false))
         .toList();
@@ -481,29 +458,8 @@ class _PhotoManagerScreenState extends State<PhotoManagerScreen> {
       if (mounted) {
         context.read<PhotoUploadProvider>().addFiles(files);
 
-        // Listen for queue completion to refresh user
-        // Or rely on user manually refreshing or generic stream?
-        // Optimally, when queue is empty or success, we trigger user refresh.
-        // For now, let's just trigger a one-time refresh after a short delay or rely on the fact
-        // that once upload succeeds, we might want to refresh user data to get the new URLs from backend cleanly.
-        // Actually, PhotoUploadProvider logic doesn't refresh AuthProvider. Let's do it here or in provider.
-        // Better in UI to react to changes.
 
-        // We can add a listener to provider, but that's complex in this method.
-        // The simplest is: when an item succeeds, the user might want fresh data.
-        // But `PhotoUploadProvider` doesn't know about `AuthProvider`.
-        // Let's hook into the build method or let the user pull to refresh if needed.
-        // However, to make it seamless, let's periodically check or rely on upload provider to notify us?
-        // NO, let's update `PhotoUploadProvider` to accept `AuthProvider` callback or similar?
-        // Too coupled.
 
-        // Alternative: In `_uploadPhotos` inside provider, after success, we just have local data.
-        // The `AuthProvider` needs to be refreshed to get the canonical server state eventually.
-        // Let's rely on basic flow:
-        // 1. Upload finishes.
-        // 2. User sees success checkmark.
-        // 3. We can trigger a user refresh when the queue becomes empty of pending items?
-        // Let's adding a listener in initState.
       }
     } catch (e) {
       debugPrint('[PHOTO_MANAGER] Error picking/uploading: $e');

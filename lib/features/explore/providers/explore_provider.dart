@@ -63,7 +63,6 @@ class ExploreProvider with ChangeNotifier {
         newUsers = List<Map<String, dynamic>>.from(response.data!);
         nextCursor = response.nextCursor;
 
-        // Apply client-side filtering if backend doesn't support it
         if (_filters.isNotEmpty && newUsers.isNotEmpty) {
           newUsers = _applyClientSideFilters(newUsers);
           debugPrint('[EXPLORE] After client filter: ${newUsers.length} users');
@@ -101,7 +100,6 @@ class ExploreProvider with ChangeNotifier {
     List<Map<String, dynamic>> users,
   ) {
     return users.where((user) {
-      // Age filter
       if (_filters.containsKey('minAge') || _filters.containsKey('maxAge')) {
         final age = user['age'] as int?;
         if (age == null) return false;
@@ -111,11 +109,9 @@ class ExploreProvider with ChangeNotifier {
         if (age < minAge || age > maxAge) return false;
       }
 
-      // Height filter
       if (_filters.containsKey('minHeight') ||
           _filters.containsKey('maxHeight')) {
         final heightStr = user['height']?.toString() ?? '';
-        // Parse height like "5'6" to numeric
         final height = _parseHeight(heightStr);
         if (height == null) return false;
 
@@ -124,7 +120,6 @@ class ExploreProvider with ChangeNotifier {
         if (height < minHeight || height > maxHeight) return false;
       }
 
-      // Religion filter
       if (_filters.containsKey('religion')) {
         final religion = user['religion']?.toString().toLowerCase() ?? '';
         final filterReligion =
@@ -133,7 +128,6 @@ class ExploreProvider with ChangeNotifier {
           return false;
       }
 
-      // City filter
       if (_filters.containsKey('city')) {
         final city = user['city']?.toString().toLowerCase() ?? '';
         final filterCity = (_filters['city'] as String?)?.toLowerCase() ?? '';
@@ -145,7 +139,6 @@ class ExploreProvider with ChangeNotifier {
   }
 
   double? _parseHeight(String heightStr) {
-    // Parse formats like "5'6" or "5.6"
     if (heightStr.contains("'")) {
       final parts = heightStr.replaceAll('"', '').split("'");
       if (parts.length >= 1) {
@@ -175,7 +168,6 @@ class ExploreProvider with ChangeNotifier {
   }
 
   Future<void> removeFilter(String filterKey) async {
-    // Handle compound filters (ranges)
     switch (filterKey) {
       case 'age':
         _filters.remove('minAge');

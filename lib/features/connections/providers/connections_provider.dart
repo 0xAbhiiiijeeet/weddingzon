@@ -7,16 +7,13 @@ class ConnectionsProvider with ChangeNotifier {
 
   ConnectionsProvider(this._repository);
 
-  // Incoming requests
   List<Map<String, dynamic>> _incomingRequests = [];
   List<Map<String, dynamic>> _myConnections = [];
   bool _isLoading = false;
   bool _isLoadingConnections = false;
 
-  // Cache for connection statuses per username
   final Map<String, Map<String, String>> _statusCache = {};
 
-  // Loading states per username
   final Map<String, bool> _requestingStates = {};
   final Map<String, bool> _requestingDetailsStates = {};
   final Map<String, bool> _sendingInterestStates = {};
@@ -27,48 +24,35 @@ class ConnectionsProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoadingConnections => _isLoadingConnections;
 
-  // =====================================================
-  // STATUS GETTERS
-  // =====================================================
 
-  /// Get photo access status for a username
   String getStatus(String username) {
     return _statusCache[username]?['photoStatus'] ?? 'none';
   }
 
-  /// Get connection status for a username
   String getConnectionStatus(String username) {
     return _statusCache[username]?['friendStatus'] ?? 'none';
   }
 
-  /// Get details access status for a username
   String getDetailsStatus(String username) {
     return _statusCache[username]?['detailsStatus'] ?? 'none';
   }
 
-  /// Check if currently requesting photo access
   bool isRequesting(String username) {
     return _requestingStates[username] ?? false;
   }
 
-  /// Check if currently requesting details access
   bool isRequestingDetails(String username) {
     return _requestingDetailsStates[username] ?? false;
   }
 
-  /// Check if currently sending interest/connection request
   bool isSendingInterest(String username) {
     return _sendingInterestStates[username] ?? false;
   }
 
-  /// Check if currently cancelling any request
   bool isCancellingRequest(String username) {
     return _cancellingStates[username] ?? false;
   }
 
-  // =====================================================
-  // FETCH CONNECTION STATUS
-  // =====================================================
 
   Future<void> fetchStatus(String username) async {
     try {
@@ -83,9 +67,6 @@ class ConnectionsProvider with ChangeNotifier {
     }
   }
 
-  // =====================================================
-  // CONNECTION REQUESTS
-  // =====================================================
 
   Future<void> sendInterest(String username) async {
     _sendingInterestStates[username] = true;
@@ -95,7 +76,6 @@ class ConnectionsProvider with ChangeNotifier {
 
     if (response.success) {
       Fluttertoast.showToast(msg: 'Interest sent successfully');
-      // Update local cache
       _statusCache[username] = {
         ...?_statusCache[username],
         'friendStatus': 'pending',
@@ -135,9 +115,6 @@ class ConnectionsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // =====================================================
-  // PHOTO ACCESS REQUESTS
-  // =====================================================
 
   Future<void> requestAccess(String username) async {
     _requestingStates[username] = true;
@@ -186,9 +163,6 @@ class ConnectionsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // =====================================================
-  // DETAILS ACCESS REQUESTS
-  // =====================================================
 
   Future<void> requestDetailsAccess(String username) async {
     _requestingDetailsStates[username] = true;
@@ -237,9 +211,6 @@ class ConnectionsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // =====================================================
-  // INCOMING REQUESTS MANAGEMENT
-  // =====================================================
 
   Future<void> loadIncomingRequests() async {
     _isLoading = true;
@@ -343,20 +314,13 @@ class ConnectionsProvider with ChangeNotifier {
   }
 
   void handleRealTimeRequest(Map<String, dynamic> data) {
-    // Avoid duplicates
     if (_incomingRequests.any((r) => r['_id'] == data['requestId'])) {
       return;
     }
 
-    // Since socket data might be simplified, we might want to reload
-    // But for speed, let's try to add if format matches, or reload.
-    // Safest is to just reload for now to ensure we have full user details
     loadIncomingRequests();
   }
 
-  // =====================================================
-  // MY CONNECTIONS
-  // =====================================================
 
   Future<void> loadMyConnections() async {
     _isLoadingConnections = true;

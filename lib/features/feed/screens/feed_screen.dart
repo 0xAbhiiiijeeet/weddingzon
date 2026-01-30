@@ -11,7 +11,10 @@ import '../../shell/providers/badge_provider.dart';
 import '../../../shared/widgets/notification_badge.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+  final String? viewAsUserId;
+  final String? viewAsUserName;
+
+  const FeedScreen({super.key, this.viewAsUserId, this.viewAsUserName});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -28,16 +31,14 @@ class _FeedScreenState extends State<FeedScreen>
   void initState() {
     super.initState();
 
-    // Load feed on first mount
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<FeedProvider>().loadFeed();
+      await context.read<FeedProvider>().loadFeed(viewAs: widget.viewAsUserId);
       if (mounted) {
         final users = context.read<FeedProvider>().users;
         context.read<ConnectionProvider>().updateStatusesFromFeed(users);
       }
     });
 
-    // Setup infinite scroll
     _scrollController.addListener(_onScroll);
   }
 
@@ -50,7 +51,6 @@ class _FeedScreenState extends State<FeedScreen>
   void _onScroll() async {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      // Load more when 200px from bottom
       await context.read<FeedProvider>().loadMore();
       if (mounted) {
         final users = context.read<FeedProvider>().users;
@@ -92,107 +92,132 @@ class _FeedScreenState extends State<FeedScreen>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('WeddingZon'),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          Consumer<BadgeProvider>(
-            builder: (context, badgeProvider, _) {
-              return IconButton(
-                icon: NotificationBadge(
-                  count: badgeProvider.connectionBadgeCount,
-                  child: const Icon(Icons.people, size: 22),
+        actions: widget.viewAsUserId != null
+            ? []
+            : [
+                Consumer<BadgeProvider>(
+                  builder: (context, badgeProvider, _) {
+                    return IconButton(
+                      icon: NotificationBadge(
+                        count: badgeProvider.connectionBadgeCount,
+                        child: const Icon(Icons.people, size: 22),
+                      ),
+                      tooltip: 'Connections',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ConnectionsScreen(),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
-                tooltip: 'Connections',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ConnectionsScreen(),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, size: 22),
-            tooltip: 'Logout',
-            onPressed: _showLogoutDialog,
-          ),
-        ],
+                IconButton(
+                  icon: const Icon(Icons.logout, size: 22),
+                  tooltip: 'Logout',
+                  onPressed: _showLogoutDialog,
+                ),
+              ],
       ),
-      body: Consumer<FeedProvider>(
-        builder: (context, feedProvider, _) {
-          // Initial loading state
-          if (feedProvider.isLoading && feedProvider.users.isEmpty) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 3,
-              itemBuilder: (context, index) => const ShimmerCard(),
-            );
-          }
-
-          // Error state
-          if (feedProvider.error != null && feedProvider.users.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: Column(
+        children: [
+          if (widget.viewAsUserId != null)
+            Container(
+              width: double.infinity,
+              color: Colors.blue.shade100,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: Row(
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
+                  const Icon(Icons.visibility, size: 16, color: Colors.blue),
+                  const SizedBox(width: 8),
                   Text(
-                    feedProvider.error!,
-                    style: const TextStyle(fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => feedProvider.loadFeed(),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
+                    'Viewing as ${widget.viewAsUserName ?? "Member"}',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
+            ),
+          Expanded(
+            child: Consumer<FeedProvider>(
+              builder: (context, feedProvider, _) {
+                return _buildFeedContent(feedProvider);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedContent(FeedProvider feedProvider) {
+    if (feedProvider.isLoading && feedProvider.users.isEmpty) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 3,
+        itemBuilder: (context, index) => const ShimmerCard(),
+      );
+    }
+
+    if (feedProvider.error != null && feedProvider.users.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              feedProvider.error!,
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => feedProvider.loadFeed(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (feedProvider.isEmpty) {
+      return const EmptyFeedState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        itemCount:
+            feedProvider.users.length + (feedProvider.isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == feedProvider.users.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator()),
             );
           }
 
-          // Empty state
-          if (feedProvider.isEmpty) {
-            return const EmptyFeedState();
-          }
-
-          // Feed list
-          return RefreshIndicator(
-            onRefresh: _onRefresh,
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              itemCount:
-                  feedProvider.users.length +
-                  (feedProvider.isLoadingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                // Loading more indicator
-                if (index == feedProvider.users.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                final user = feedProvider.users[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: ProfileCard(user: user),
-                );
-              },
+          final user = feedProvider.users[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ProfileCard(
+              user: user,
+              readOnly: widget.viewAsUserId != null,
             ),
           );
         },

@@ -31,7 +31,6 @@ class _ConversationsScreenState extends State<ConversationsScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      // App came back to foreground, refresh conversations
       context.read<ChatProvider>().loadConversations();
     }
   }
@@ -42,14 +41,6 @@ class _ConversationsScreenState extends State<ConversationsScreen>
       appBar: AppBar(
         title: const Text('Messages'),
         centerTitle: false,
-        // actions: [
-        //   // IconButton(
-        //   //   icon: const Icon(Icons.search),
-        //   //   onPressed: () {
-        //   //     // TODO: Implement search
-        //   //   },
-        //   // ),
-        // ],
       ),
       body: Consumer<ChatProvider>(
         builder: (context, provider, _) {

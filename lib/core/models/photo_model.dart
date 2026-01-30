@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class Photo {
   final String url;
   final String? publicId;
@@ -14,14 +16,19 @@ class Photo {
   });
 
   factory Photo.fromJson(Map<String, dynamic> json) {
-    return Photo(
+    debugPrint('[PHOTO_MODEL] 🔵 Parsing photo from JSON: $json');
+    debugPrint('[PHOTO_MODEL] 🔑 Keys: ${json.keys}');
+
+    final photo = Photo(
       url: json['url'] ?? '',
-      // Map _id to publicId as a fallback, ensuring we capture the MongoDB ID
       publicId: json['publicId'] ?? json['id'] ?? json['_id'],
       isProfile: json['isProfile'] ?? json['is_profile'] ?? false,
       restricted: json['restricted'] ?? false,
       blurredUrl: json['blurredUrl'] ?? json['blurred_url'],
     );
+
+    debugPrint('[PHOTO_MODEL] ✅ Parsed photo - URL: ${photo.url}, isProfile: ${photo.isProfile}');
+    return photo;
   }
 
   Map<String, dynamic> toJson() {

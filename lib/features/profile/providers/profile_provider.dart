@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/models/user_model.dart';
 import '../repositories/user_repository.dart';
-import '../../../core/models/api_response.dart'; // Assuming ApiResponse is in core/models
+import '../../../core/models/api_response.dart';
 
 class ProfileProvider extends ChangeNotifier {
   final UserRepository _userRepository;
@@ -91,7 +91,6 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Edit Profile Methods
   void initializeEditForm(User user) {
     _editFormData.clear();
     _editFormData.addAll(user.toJson());
@@ -112,6 +111,16 @@ class ProfileProvider extends ChangeNotifier {
     );
 
     final response = await _userRepository.updateProfile(_editFormData);
+
+    if (response.success &&
+        _editFormData['latitude'] != null &&
+        _editFormData['longitude'] != null) {
+      debugPrint('[PROFILE] Updating location coordinates...');
+      await _userRepository.updateUserLocation(
+        _editFormData['latitude'],
+        _editFormData['longitude'],
+      );
+    }
 
     _isLoading = false;
 

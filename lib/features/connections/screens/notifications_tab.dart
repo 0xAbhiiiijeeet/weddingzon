@@ -18,8 +18,6 @@ class _NotificationsTabState extends State<NotificationsTab>
   @override
   void initState() {
     super.initState();
-    // No need to load here if ConnectionsScreen/MainShell already does it.
-    // If we want to ensure data is loaded, check if empty.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<NotificationsProvider>();
       if (provider.notifications.isEmpty) {

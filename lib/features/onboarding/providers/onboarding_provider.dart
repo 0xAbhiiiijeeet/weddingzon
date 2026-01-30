@@ -11,7 +11,6 @@ class OnboardingProvider extends ChangeNotifier {
   int _currentStep = 0;
   bool _isLoading = false;
 
-  // Form data storage
   final Map<String, dynamic> _formData = {};
 
   int get currentStep => _currentStep;
@@ -19,13 +18,23 @@ class OnboardingProvider extends ChangeNotifier {
   Map<String, dynamic> get formData => _formData;
 
   void updateField(String key, dynamic value) {
+    debugPrint('[ONBOARDING_PROVIDER] 🔄 updateField called');
+    debugPrint('[ONBOARDING_PROVIDER]   - Key: $key');
+    debugPrint('[ONBOARDING_PROVIDER]   - Value: $value');
+    debugPrint('[ONBOARDING_PROVIDER]   - Type: ${value.runtimeType}');
+    debugPrint('[ONBOARDING_PROVIDER]   - Provider instance: ${this.hashCode}');
+    debugPrint('[ONBOARDING_PROVIDER]   - FormData instance: ${_formData.hashCode}');
+
     _formData[key] = value;
+
+    debugPrint('[ONBOARDING_PROVIDER] 📊 Current form data keys: ${_formData.keys}');
+    debugPrint('[ONBOARDING_PROVIDER] 📦 Total fields: ${_formData.length}');
+
     notifyListeners();
   }
 
   void nextStep() {
     if (_currentStep < 7) {
-      // Updated from 4 to 7 to support 8 steps
       _currentStep++;
       notifyListeners();
     }
@@ -47,11 +56,17 @@ class OnboardingProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Mark profile as complete
     _formData['is_profile_complete'] = true;
 
     debugPrint('[ONBOARDING] Submitting form data: $_formData');
     final response = await _profileRepository.registerDetails(_formData);
+
+    if (response.success &&
+        _formData['latitude'] != null &&
+        _formData['longitude'] != null) {
+      debugPrint('[ONBOARDING] Submitting location coordinates...');
+      await updateUserLocation(_formData['latitude'], _formData['longitude']);
+    }
 
     _isLoading = false;
     notifyListeners();
@@ -64,26 +79,105 @@ class OnboardingProvider extends ChangeNotifier {
     await _profileRepository.updateLocation(lat, lng);
   }
 
-  /// Pre-populate form data from existing user (for incomplete profiles)
   void prepopulateFromUser(User user) {
-    debugPrint('[ONBOARDING] Pre-populating from existing user data');
+    debugPrint('[ONBOARDING_PROVIDER] ========================================');
+    debugPrint('[ONBOARDING_PROVIDER] 🔄 prepopulateFromUser - Starting');
+    debugPrint('[ONBOARDING_PROVIDER] 👤 User ID: ${user.id}');
+    debugPrint('[ONBOARDING_PROVIDER] 📛 User Name: ${user.fullName}');
+    debugPrint('[ONBOARDING_PROVIDER] 📧 User Email: ${user.email}');
+    debugPrint('[ONBOARDING_PROVIDER] 📱 User Phone: ${user.phone}');
 
-    // Only populate if fields are not null
-    if (user.city != null) _formData['city'] = user.city;
-    if (user.state != null) _formData['state'] = user.state;
-    if (user.country != null) _formData['country'] = user.country;
-    if (user.firstName != null) _formData['first_name'] = user.firstName;
-    if (user.lastName != null) _formData['last_name'] = user.lastName;
-    if (user.gender != null) _formData['gender'] = user.gender;
-    if (user.dob != null) _formData['dob'] = user.dob;
-    if (user.height != null) _formData['height'] = user.height;
-    if (user.maritalStatus != null)
-      _formData['marital_status'] = user.maritalStatus;
-    if (user.motherTongue != null)
-      _formData['mother_tongue'] = user.motherTongue;
-    if (user.religion != null) _formData['religion'] = user.religion;
-    if (user.community != null) _formData['community'] = user.community;
-    if (user.occupation != null) _formData['occupation'] = user.occupation;
+    void addIfNotEmpty(String key, String? value) {
+      if (value != null && value.trim().isNotEmpty) {
+        _formData[key] = value;
+        debugPrint('[ONBOARDING_PROVIDER]   ✅ Added $key: $value');
+      }
+    }
+
+    addIfNotEmpty('created_for', user.createdFor);
+    addIfNotEmpty('username', user.username);
+    addIfNotEmpty('email', user.email);
+    addIfNotEmpty('phone', user.phone);
+    addIfNotEmpty('first_name', user.firstName);
+    addIfNotEmpty('last_name', user.lastName);
+    if (user.dob != null) {
+      _formData['dob'] = user.dob!.toIso8601String();
+      debugPrint('[ONBOARDING_PROVIDER]   ✅ Added dob: ${user.dob!.toIso8601String()}');
+    }
+    addIfNotEmpty('gender', user.gender);
+    if (user.height != null) {
+      String h = user.height!;
+      if (h.contains(' (')) {
+        h = h.split(' (')[0];
+      }
+      addIfNotEmpty('height', h);
+    }
+
+    if (user.maritalStatus != null) {
+      if (user.maritalStatus is List) {
+        if ((user.maritalStatus as List).isNotEmpty) {
+          addIfNotEmpty(
+            'marital_status',
+            (user.maritalStatus as List).first.toString(),
+          );
+        }
+      } else if (user.maritalStatus is String) {
+        addIfNotEmpty('marital_status', user.maritalStatus);
+      }
+    }
+
+    addIfNotEmpty('mother_tongue', user.motherTongue);
+    addIfNotEmpty('disability', user.disability);
+    addIfNotEmpty('disability_description', user.disabilityDescription);
+    addIfNotEmpty('aadhar_number', user.aadharNumber);
+    addIfNotEmpty('blood_group', user.bloodGroup);
+    addIfNotEmpty('about_me', user.aboutMe);
+
+    addIfNotEmpty('phone', user.phone);
+    addIfNotEmpty('email', user.email);
+
+    addIfNotEmpty('city', user.city);
+    addIfNotEmpty('state', user.state);
+    addIfNotEmpty('country', user.country);
+
+    addIfNotEmpty('father_status', user.fatherStatus);
+    addIfNotEmpty('mother_status', user.motherStatus);
+    if (user.brothers != null) _formData['brothers'] = user.brothers.toString();
+    if (user.sisters != null) _formData['sisters'] = user.sisters.toString();
+    addIfNotEmpty('family_status', user.familyStatus);
+    addIfNotEmpty('family_type', user.familyType);
+    addIfNotEmpty('family_values', user.familyValues);
+    addIfNotEmpty('annual_income', user.annualIncome);
+    addIfNotEmpty('family_location', user.familyLocation);
+
+    addIfNotEmpty('highest_education', user.highestEducation);
+    addIfNotEmpty('educational_details', user.educationalDetails);
+    addIfNotEmpty('occupation', user.occupation);
+    addIfNotEmpty('employed_in', user.employedIn);
+    addIfNotEmpty('personal_income', user.personalIncome);
+    addIfNotEmpty('working_sector', user.workingSector);
+    addIfNotEmpty('working_location', user.workingLocation);
+
+    addIfNotEmpty('religion', user.religion);
+    addIfNotEmpty('community', user.community);
+    addIfNotEmpty('sub_community', user.subCommunity);
+
+    addIfNotEmpty('appearance', user.appearance);
+    addIfNotEmpty('living_status', user.livingStatus);
+    addIfNotEmpty('physical_status', user.physicalStatus);
+    addIfNotEmpty('eating_habits', user.eatingHabits);
+    addIfNotEmpty('smoking_habits', user.smokingHabits);
+    addIfNotEmpty('drinking_habits', user.drinkingHabits);
+    if (user.hobbies.isNotEmpty) {
+      _formData['hobbies'] = user.hobbies;
+      debugPrint('[ONBOARDING_PROVIDER]   ✅ Added hobbies: ${user.hobbies}');
+    }
+
+    debugPrint('[ONBOARDING_PROVIDER] ========================================');
+    debugPrint('[ONBOARDING_PROVIDER] ✅ prepopulateFromUser - Complete');
+    debugPrint('[ONBOARDING_PROVIDER] 📊 Total fields populated: ${_formData.length}');
+    debugPrint('[ONBOARDING_PROVIDER] 🔑 All keys: ${_formData.keys.toList()}');
+    debugPrint('[ONBOARDING_PROVIDER] ========================================');
 
     notifyListeners();
   }

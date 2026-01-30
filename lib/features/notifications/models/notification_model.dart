@@ -5,7 +5,7 @@ class NotificationModel {
   final String title;
   final String body;
   final String
-  type; // 'connection_request', 'request_accepted', 'chat_message', 'profile_view'
+  type;
   final Map<String, dynamic> data;
   final DateTime timestamp;
   final bool isRead;

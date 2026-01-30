@@ -45,7 +45,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
         title: const Text(''),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFFE91E63), // Pink
+          labelColor: const Color(0xFFE91E63),
           unselectedLabelColor: Colors.grey,
           indicatorColor: const Color(0xFFE91E63),
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
